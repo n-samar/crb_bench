@@ -1,7 +1,7 @@
 TEX = $(wildcard *.tex)
 BIB = refs.bib
-PAPER = micro23_bitpacker
-OPT_PAPER = micro23_bitpacker_opt
+PAPER = samardzic_final
+OPT_PAPER = samardzic_final_opt
 #FLAGS = -halt-on-error -mode=batch
 FLAGS = -halt-on-error -interaction=batchmode
 
