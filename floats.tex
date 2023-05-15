@@ -20,6 +20,34 @@
     \end{figure}
 }
 
+\newcommand{\tblSpecs}{
+    \begin{table*}[t]
+        \centering
+        \begin{footnotesize}
+        \begin{tabular}{lrrrr}
+            \toprule
+            Name                       & \texttt{stg1}                                                                   & \texttt{stg2}                                                                          & \texttt{bcn6}                                                                          & \texttt{mac} \\
+            \midrule
+            $\mu$-architecture         & \begin{tabular}{@{}r@{}}AMD Ryzen Threadripper\\PRO 3975WX\end{tabular}         & AMD EPYC 7763                                                                          & Intel Xeon CPU E5-2697                                                                 & Intel Core i5-1038NG7 \\
+            Max freq. [GHz]            & 4.2                                                                             & 3.5                                                                                    & 3.2                                                                                    & 3.8 \\
+            Sockets                    & 1                                                                               & 2                                                                                      & 1                                                                                      & 1 \\
+            Cores / socket             & 32                                                                              & 64                                                                                     & 14                                                                                     & 4 \\
+            SMP                        & 2$\times$                                                                       & 2$\times$                                                                              & 2$\times$                                                                              & 2$\times$ \\
+            FPU / core                 & \begin{tabular}{@{}r@{}}16 FP64 ops/cycle (AVX2)\\ + 256-bit FMA3\end{tabular}  & \begin{tabular}{@{}r@{}}16 FP64 ops/cycle (AVX2)\\ + 256-bit FMA3\end{tabular}         & \begin{tabular}{@{}r@{}}16 FP64 ops/cycle (AVX2) \\ + 256-bit FMA3\end{tabular}        & \begin{tabular}{@{}r@{}}32 FP64 ops/cycle (AVX2) \\ + 512-bit FMA3\end{tabular} \\
+            Integer / core             & 16 i64 ops/cycle (AVX2)                                                         & 16 i64 ops/cycle (AVX2)                                                                & 16 i64 ops/cycle (AVX2)                                                                & 32 i64 ops/cycle (AVX-512) \\
+            Cache line [B]             & 64                                                                              & 64                                                                                     & 64                                                                                     & 64 \\
+            L1 D-cache [KiB]           & 32                                                                              & 32                                                                                     & 32                                                                                     & 48 \\
+            L1 I-cache [KiB]           & 32                                                                              & 32                                                                                     & 32                                                                                     & 32 \\
+            L2 cache / core [KiB]      & 512                                                                             & 512                                                                                    & 256                                                                                    & 2.5 \\
+            L3 cache / core [MiB]      & 4                                                                               & 4                                                                                      & 10                                                                                     & 3 \\
+            DRAM                       & \begin{tabular}{@{}r@{}}256\,GiB, 200\,GiB/s\\(8$\times$DDR4-3200)\end{tabular} & \begin{tabular}{@{}r@{}}2\,TiB, 200\,GiB/s/socket\\(8$\times$DDR4-3200)\end{tabular}   & \begin{tabular}{@{}r@{}}128\,GiB, 200\,GiB/s/socket\\(8$\times$DDR4-2133)\end{tabular} & \begin{tabular}{@{}r@{}}16\,GB, 50\,GB/s\\(2$\times$DDR4-3200)\end{tabular}\\
+            \bottomrule
+        \end{tabular}
+    \end{footnotesize}
+        \caption{Caption}
+    \end{table*}
+}
+
 \newcommand{\figBitwidthSweep}{
     \begin{figure*}[t]
         \begin{center}

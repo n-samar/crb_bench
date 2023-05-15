@@ -4,17 +4,3 @@ Nikola Samardzic did all the work for this project.
 
 \section{Conclusion}\label{sec:conclusion}
 
-%Recent FHE accelerators have made great progress towards making FHE practical,
-%but these accelerators focus on FHE schemes designed for CPUs.
-Making full use of FHE accelerators requires redesigning FHE algorithms to use them well.
-We have presented \name, a new implementation of the state-of-the-art CKKS scheme that addresses
-the overheads of the standard RNS-CKKS implementation.
-\name decouples CKKS scales from residue sizes, enabling high utilization of accelerator datapaths.
-This significantly improves performance, efficiency, and area, with no precision loss or other downsides.
-
-In evaluating \name, we have also explored the impact of hardware word size on accelerator design,
-a previously overlooked dimension where existing accelerators took widely different choices.
-We have shown that, with RNS-CKKS, accelerators suffer from uneven performance and efficiency at \emph{any} word size,
-due to the wide range of scales needed by applications. \name avoids this problem,
-and makes narrow (28-bit) words the most efficient choice.
-
