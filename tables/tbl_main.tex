@@ -1,0 +1,22 @@
+\begin{table}[t]
+  \resizebox{\linewidth}{!}{
+  \begin{footnotesize}
+    %\begin{center}
+      \begin{tabular}{l|rr|rr}
+        \toprule
+        & \multicolumn{2}{c|}{Mean}                  & \multicolumn{2}{c}{Worst-case} \\
+        Benchmark     & \name                & RNS-CKKS             & \name               & RNS-CKKS \\
+        \midrule
+        ResNet-20     & \PrecMedResNetBP     & \PrecMedResNetRC     & \PrecWCResNetBP     & \PrecWCResNetRC \\
+        SqueezeNet    & \PrecMedSqueezeNetBP & \PrecMedSqueezeNetRC & \PrecWCSqueezeNetBP & \PrecWCSqueezeNetRC \\
+        RNN           & \PrecMedRnnBP        & \PrecMedRnnRC        & \PrecWCRnnBP        & \PrecWCRnnRC \\
+        LogReg        & \PrecMedLogRegBP     & \PrecMedLogRegRC     & \PrecWCLogRegBP     & \PrecWCLogRegRC \\
+        \bottomrule
+      \end{tabular}
+    %\end{center}
+  \end{footnotesize}
+  }
+  \caption{Number of error-free mantissa bits of \name compared to RNS-CKKS.}
+\label{tbl:main}
+\vspace{-0.1in}
+\end{table}

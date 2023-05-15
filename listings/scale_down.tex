@@ -1,0 +1,25 @@
+\begin{figure}
+\begin{lstlisting}[escapechar=!,label=lst:scaleDown,caption={
+  Implementation of \texttt{scaleDown}.
+}]
+# rescaleUs = [p_0, p_1, ..., p_k]
+def !\color{orange}{scaleDown}!(ct: Ct, rescaleUs: Seq[int]) -> Ct:
+  for x in (ct.0, ct.1):
+    # x's shape is [R][N]
+    x = moveResiduesToEnd(x, rescaleUs)
+    k = len(rescaleUs)
+
+    subMe = zeros(shape=(R, N))
+    subMe[R-k:R] = x[R-k:R]
+    for i in range(R-k, R):
+      for j in range(R-k):
+        # C[i][j] is precomputed
+        subMe[j] += C[i][j] * subMe[i] mod q[j]
+
+    x -= subMe
+    # InvP is precomputed
+    x = mulConst(x[0:R-k], InvP)
+  return ct[0:R-k]
+\end{lstlisting}
+\vspace{-0.15in}
+\end{figure}

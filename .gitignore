@@ -1,0 +1,17 @@
+*.log
+*.blg
+*.pdf
+*.aux
+*.out
+*.bbl
+*.blg
+*.sw*
+auto_header.tex
+.nvimlog
+
+# Still include
+!figures/figures.pdf
+!plots/*.pdf
+
+# But not these
+plots/*-crop.pdf

@@ -1,0 +1,127 @@
+\section{Methodology}
+\label{sec:methodology}
+
+\paragraph{Accelerators:}
+We compare \name and RNS-CKKS using CraterLake.
+Our default accelerator is CraterLake as originally proposed, using 28-bit words,
+2048 vector lanes, a 256MB register file, and 1\,TB/s high-bandwidth main memory.
+We gather performance and energy using CraterLake's cycle-accurate
+simulator~\cite{samardzic:isca22:craterlake}.
+
+\autoref{sec:sweep} explores CraterLake variants with different hardware word
+sizes, from 28 to 64 bits.
+These capture the tradeoffs of word size and are representative
+of accelerators with 64-bit datapaths, like ARK~\cite{kim2022ark}.
+
+%We keep the area of CraterLake roughly constant as we vary the word size;
+%this is done by reducing the number of vector lanes and the number of
+%multiply-accumalate pipelines in the CRB linearly with word size.
+%We implement an FHE library in Rust that supports both the \name and RNS-CKKS
+%representation. We use this library to evaluate precision.
+
+%\paragraph{Baseline:}
+%Our baseline is RNS-CKKS~\cite{cheon2019full}, an implementation of CKKS used
+%in all CKKS accelerators (\autoref{sec:background}).
+%
+%In our evaluation \name and RNS-CKKS representations differ \emph{only} in the
+%mapping from levels to residue moduli (\autoref{sec:overview}), with the size
+%of moduli at each level differing by at most 2\x between the two. In
+%particular, for a given benchmark, both representations meet the same program
+%and hardware constraints, and run the same FHE program on the same hardware.
+
+\paragraph{Benchmarks:}
+We use four \emph{large FHE programs} developed by FHE
+experts to evaluate \name:
+%Each of these programs is the state-of-the-art in its domain.
+%For each benchmark, we use the 19-bit bootstrapping algorithm from Lattigo for
+%our main results~\cite{lattigo-github}; it uses scales of 52, 55, and 30 bits.
+%To highlight the impact of different scales and algorithms, we also report
+%performance when 26-bit bootstrapping from Lattigo is used instead; it uses
+%scales of 54, 60, and 40 bits.
+
+\paragraph{\emph{(1) ResNet-20}}
+is Lee et al.~\cite{lee:icml22:packed-resnet-fhe}'s
+FHE implementation of the ResNet-20 deep neural network.
+ResNet-20 uses a high-degree polynomial to approximate ReLU activation
+functions, which is accurate but adds depth, making bootstrapping more
+frequent.
+It uses the CIFAR-10 dataset.
+
+\paragraph{\emph{(2) SqueezeNet}}
+is an FHE implementation of the SqueezeNet neural
+network~\cite{krizhevsky2009learning,iandola2016squeezenet}.
+SqueezeNet uses degree-2 activation functions following
+AESPA~\cite{park2022aespa}, so it bootstraps less frequently than
+ResNet-20.
+It uses the CIFAR-10 dataset.
+
+\paragraph{\emph{(3) RNN}}
+is a natural language processing benchmark that performs sentiment analysis
+using a Recurrent Neural Network~\cite{elman:rnn}.
+It uses Podschwadt's algorithm~\cite{podschwadt2020classification},
+and is derived from the LSTM benchmark in~\cite{samardzic:isca22:craterlake}.
+RNN processes 200 word embeddings $x_i$, and incorporates each in
+its hidden state following $h_{i+1} = \sigma(W_{hh} h_i + W_{ih} x_i + b)$.
+$\sigma(\cdot)$ is a degree-3 polynomial, and
+$x_i$ and $h_i$ are both of dimension 128.
+It uses the IMDB dataset~\cite{maas-EtAl:2011:ACL-HLT2011}.
+
+\paragraph{\emph{(4) LogReg}}
+uses the HELR algorithm~\cite{han:iacr18:efficient-logreg} to perform logistic
+regression to train a linear binary classifier.
+LogReg performs 32 iterations of Nesterov Accelerated Gradient
+Descent~\cite{ruder2016overview} with batch size 1024 and 197 features per
+sample. %; the sigmoid activation is approximated by a degree-7 polynomial.
+It uses the MNIST dataset~\cite{lecun1998gradient}.
+
+These applications need different scales for application-level computation:
+ResNet and RNN use 45-bit scales, while SqueezeNet and LogReg use 35-bit scales.
+
+\paragraph{Bootstrapping:}
+All applications use bootstrapping.
+We present results using two state-of-the-art bootstrapping algorithms from
+Lattigo~\cite{lattigo-github}, which have different levels of end-to-end
+precision, 19 and 26 bits. We denote these algorithms \emph{BS19} and \emph{BS26}.
+BS26 is a bit costlier than BS19, but achieves higher numeric precision.
+
+These bootstrapping algorithms use different scales: \emph{BS19} uses scales of 52, 55, and 30
+bits; and \emph{BS26} uses scales of 54, 60, and 40 bits.
+
+\paragraph{FHE parameters:}
+We use ciphertext polynomials with $N=64K$ coefficient and $\log_2Q_{max}=1,596$
+bits.
+For performance, benchmarks use a combination of 2-digit and 1-digit
+keyswitching~\cite{samardzic:isca22:craterlake,halevi2020helib,gentry:crypto2012:homomorphic}.
+These parameters offer 80-bit security, like prior
+work~\cite{samardzic:isca22:craterlake}.
+Other security levels (e.g., 128 bits) would require some changes to $\log_2Q_{max}$
+and the keyswitching schedule, and are orthogonal to the use of \name or
+RNS-CKKS~\cite{samardzic:isca22:craterlake}.
+
+As noted above, each application targets four distinct CKKS scales ranging from
+30 to 60 bits: one for application computation, and three for bootstrapping.
+
+Due to the lack of small NTT-friendly primes (\autoref{sec:modulusChain}), when
+hardware word sizes are narrow,
+there are some scales in the 30--60-bit range that RNS-CKKS cannot meet.
+For example, with 28-bit hardware words, a 30-bit scale is not possible,
+because there is no combination of two residue moduli whose bitwidth adds up to
+30 bits.
+In these cases, we use the smallest possible scale that can be implemented.
+For instance, a single 35-bit scale is possible by combining 17- and 18-bit
+residue moduli.
+This consumes ciphertext bits more rapidly when scales are 35-bit or lower, but
+it is an unavoidable inefficiency with RNS-CKKS.
+Designs with 35-bit or larger word sizes do not suffer this problem, and this
+problem does not affect \name, which can match any scale to the required hardware word
+size (\name's only requirement is that enough NTT-friendly primes exist, which $w \geq 28$ bits meets).
+
+\figMain % dsm: babysitted
+
+\paragraph{Correctness and accuracy:}
+To evaluate \name's accuracy, we implement an FHE library in Rust that supports
+both the \name and RNS-CKKS representations.
+For RNS-CKKS, we use Kim et al.'s~\cite{kim2022approximate} accurate mod-down
+procedure (\autoref{sec:rnsCkks}).
+We evaluate accuracy by comparing with unencrypted floating-point computation.
+

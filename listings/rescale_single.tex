@@ -1,0 +1,14 @@
+\begin{figure}
+\begin{lstlisting}[label=lst:rnsCkksRescale,caption={
+  Implementation of rescale in RNS-CKKS from level $L$ to $L-1$.
+}]
+def rnsCkksRescale(ct: Ct) -> Ct:
+  for x in (ct.0, ct.1):
+    # x has shape [L][N]
+    # all ops are on N-element vectors
+    for i in [0:L-2]:
+      F = 1 / q[i-1] mod q[i] # precomputed
+      x[i] = (x[i] - x[L-1]) * F mod q[i]
+    return ct[0:L-2] # drop last residue
+\end{lstlisting}
+\end{figure}

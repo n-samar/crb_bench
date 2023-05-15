@@ -1,0 +1,35 @@
+\begin{figure}
+\begin{lstlisting}[label=lst:greedy,caption={
+Greedy DFS algorithm for generating residue moduli whose product matches that
+of a target modulus.
+}]
+def Greedy(target_q: Rational,
+    result = []: Seq[int],
+    primes_left = AllDescPrimes(): Seq[int])
+    -> Optional[Seq[int]]:
+
+  if target_q < sqrt(2)/2:
+    # Overshot the target, so stop (and backtrack)
+    return None
+
+  if sqrt(2)/2 < target_q < sqrt(2):
+    # Product of result within 0.5 bits
+    # of target_q, so return success
+    return result
+
+  # Iterate through all primes smaller than
+  # those in result in decreasing order
+  for idx, prime in primes_left:
+    # Try greedily adding the next prime to result
+    result = Greedy(
+      target_q / prime,
+      result + [prime],
+      primes_left[idx:])
+    if result is not None:
+      # Stop and return on first success
+      return result
+  # no match found
+  return None
+\end{lstlisting}
+\vspace{-0.1in}
+\end{figure}

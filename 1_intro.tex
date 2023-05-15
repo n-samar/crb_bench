@@ -1,0 +1,25 @@
+\section{Introduction}\label{sec:introduction}
+
+Fully homomorphic encryption (FHE) is a special type of encryption scheme that
+enables computing on encrypted data directly, without decrypting it. FHE allows
+a client to offload a computation to an untrusted server without revealing any
+data~\cite{chen:ccs17:privset-fhe,DBLP:conf/tcc/GentryH19,gilad:icml16:cryptonets}.
+
+Unfortunately, FHE is computationally very expensive: up to 100,000x slower
+than the same computation on unencrypted data~\cite{halevi:crypto14:algorithms-helib}.
+Prior work identified that the key computational kernel in FHE is the so-called
+ChangeRnsBase algorithm, accounting for $\sim$90\% of the
+compute\cite{samardzic:isca22:craterlake}.
+The goal of this project will be to see how fast ChangeRnsBase can run in
+software on an AMD Ryzen Threadripper PRO 3975WX.
+
+Existing software libraries implement less-performant FHE schemes that do not
+have the ChangeRnsBase bottleneck.
+While these libraries avoid the
+ChangeRnsBase, the total amount of both data movement and compute is actually
+higher than when the ChangeRnsBase is used\cite{samardzic:isca22:craterlake}.
+Further, the ChangeRnsBase is amenable to parallelism as it has a
+computationally meaty kernel inside a trivially parallelizable loop.
+When the ChangeRnsBase is avoided, the opportunities for parallelism are less
+obvious.
+

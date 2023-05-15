@@ -1,0 +1,81 @@
+\section{Background and Motivation}\label{sec:background}
+
+FHE is built on top of the Learning With Errors (LWE) cryptographic problem.
+LWE’s ciphertexts are polynomials with coefficients up to 3,000 bits wide
+(integers modulo a large composite number) and degree 10,000--100,000.
+For performance, both software and hardware FHE solutions use the Residue
+Number System (RNS), which leverages the Chinese Remainder
+Theorem~\cite{garner:1959:residue} to allow us to store and operate on FHE’s
+wide coefficients using many small word-sized registers and functional units.
+The ChangeRnsBase changes the modulus field of the polynomials.
+It is necessary for almost every FHE operation and is responsible for >90\%
+compute on most standard FHE
+benchmarks~\cite{feldmann:micro21:f1,samardzic:isca22:craterlake,lattigo-github}.
+
+To apply the ChangeRnsBase operation on a polynomial, we simply apply it to
+each of its coefficients. This is a convenient source of parallelism.
+
+The simplest algorithm I can think of for doing the ChangeRnsBase on a single
+polynomial coefficient is to apply the direct construction proof of the
+existence portion of the Chinese Remainder Theorem\cite{gauss1966english}.
+This approach states that
+
+\begin{equation*}
+X = \sum_{i=1}^k a_i M_i N_i
+\end{equation*}
+
+is a solution to a system of congruences
+
+\begin{align*}
+    x &= a_1 \mod n_1, \\
+    x &= a_2 \mod n_2, \\
+      &... \\
+    x &= a_k \mod n_k,
+\end{align*}
+
+where $N_i = N/n_i$, $N=n_1n_2\cdot...\cdot n_k$, and $M_i$ is the unique integer
+such that $M_iN_i + m_in_i = 1$ (i.e., the \emph{Bezout coefficients}).
+
+This approach will probably give the best performance with practical parameter
+sizes, even though asymptotically better solutions are known.
+
+Critically the moduli (all the $n_i$) are known at compile time. This implies
+that all the “helper” constants (like $N_i$, $M_i$, etc.) can be precomputed.
+
+Mathematically, the ChangeRnsBase asks us to convert the RNS representation
+$\{a_1 \mod n_1, …, a_k \mod n_k\}$ to another RNS basis $\{b_1 \mod p_1, …, b_k
+\mod p_k\}$, such that both representations represent the same number (the
+Chinese Remainder Theorem guarantees that there is a unique representative mod
+the product of the primes in the basis).
+
+The approach I will take is to apply the constructive proof (1):
+
+\begin{equation*}
+b_i = sum_{j=1}^k (a_j (M_j mod p_i) (N_j mod p_i)) mod p_i
+\end{equation*}
+
+(Note that all the operations here are modulo $p_i$, and thus word-sized and
+cheap).
+
+This turns the ChangeRnsBase problem into a small matrix-vector multiply:
+assuming that we want to change from a 1,500-bit base to a 1,500-bit base, and
+that the underlying wordsize is 64 bits, ChangeRnsBase for a single coefficient
+looks like a $1500/64=24\times 24$ matrix-vector multiply.
+Additionally, the matrix entries are $\{(M_j \mod p_i) (N_j \mod p_i)\}_{i,
+j}$, so they are known at compile time!
+The vector is $\{a_i\}_i$ and depends on coefficient values.
+
+This computation also differs from matrix-vector multiply in that each row is
+computed mod a different modulus.
+Whether this modulus will be applied after each summand is added, or only at
+the end is an open question I will explore.
+Further, (1) will not give the minimal RNS representative and the minimal
+representative gives substantially better ciphertext precision\cite{bajard2017full}.
+So the equation in (1) is often corrected using a cool floating-point
+arithmetic trick: you basically keep track of how many times over you overflow
+N during the computation of (2) and then correct the term at the end; since
+floating point has a very large dynamic range, it is ideal for this overflow
+counting~\cite{lattigo-github}.
+Whether the floating point operations can be mixed in with the integer modular
+operations at no extra cost is an open problem I hope to explore.
+

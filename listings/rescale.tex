@@ -1,0 +1,27 @@
+\begin{figure}
+\begin{lstlisting}[label=lst:rescale,caption={
+  \todo{Rewrite, make self-contained} Implementation of \texttt{rescale}.
+}]
+def rescaleMulti(x: Ct, modToShed: Int) -> Ct:
+ ...
+
+def rescaleCoeff(x: BigInt,
+    rescaleUs: Seq[ResMod]) -> BigInt:
+  x = BigInt([x.r(p) for p in x.qs() \
+        if p not in rescaleUs])
+  rr = BigInt([(x.r(q), q) for q in rescaleUs])
+
+  subMe = BigInt([(0, q) for q in x.qs()])
+  for q_src in rr.qs():
+    for q_dst in x.qs():
+      tmp = C[q_src][q_dst] * x.r(q_dst)
+      subMe.r(q_dst) += tmp
+
+  r_prod = product(rescaleUs)
+  for q_dst in x.qs():
+    x.r(q_dst) -= subMe.residue(q_dst)
+    x.r(q_dst) *= inverse(r_prod, q_dst)
+
+  return x
+\end{lstlisting}
+\end{figure}

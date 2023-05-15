@@ -1,0 +1,16 @@
+ \definecolor{light-gray}{gray}{0.80}
+\begin{figure}
+\begin{lstlisting}[escapechar=!,label=lst:scaleUp,caption={
+Implementation of \texttt{scaleUp}.
+}]
+# qs is a list of residue moduli to scale up by
+# qs are all coprime to ct's modulus
+def !\color{gray}{scaleUp}!(ct: Ct, qs: Seq[int]) -> Ct:
+  K = product(qs) # precomputed
+  ct = mulConst(ct, K)
+  for x in (ct.0, ct.1):
+    # Before append, x's shape is [R][N]
+    x.append([[0] * N] * len(qs))
+  return ct[0:R+len(qs)]
+\end{lstlisting}
+\end{figure}

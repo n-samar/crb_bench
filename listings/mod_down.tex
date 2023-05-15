@@ -1,0 +1,14 @@
+\begin{figure}
+\begin{lstlisting}[label=lst:mod_down,caption={
+  Implementation of precise mod-down in RNS-CKKS between levels $L$ and $L-1$.
+}]
+def rnsCkksModDown(ct: Ct) -> Ct:
+  # ct's scale is S[L] == scale at level L
+  K = q[L-1] * S[L-1] / S[L] # precomputed
+  # ct0's scale = S[L] * K = q[L-1] * S[L-1]
+  ct0 = mulConst(ct, K)
+  # scale after rescale = S[L-1]
+  return rnsCkksRescale(ct0)
+\end{lstlisting}
+\vspace{-0.1in}
+\end{figure}

@@ -1,0 +1,117 @@
+% dsm: This section has some good points, but it's not an overview. It's mostly a drawn-out descripton of preliminaries. After thinking about this, I'm going to try to describe BitPacker in a single section, because this doesn't get to the point. I also don't see the point in introducing the term "modulus map". I avoided it in Section 2, and don't see why BitPacker makes this any more complicated.
+
+\section{Overview}
+\label{sec:overview}
+
+As mentioned, we define a \emph{modulus map} as a mapping between levels and
+moduli.
+In this section, we show how modulus maps, hardware, and FHE programs can be
+decoupled without impacting precision and security.
+This allows us to run the \emph{same} FHE program using \emph{many} different
+modulus maps, with no impact to precision or security.
+We then show the main idea behind \name's modulus maps, and why they are better
+than those of RNS-CKKS.
+\autoref{sec:levelMgmt} shows how CKKS's level management operations can be
+adapted to be flexible enough to support \name's modulus maps, while
+\autoref{sec:modulusChain} presents an algorithm we use to create these maps.
+
+\figOverview
+
+\autoref{sec:background} shows that a modulus map impacts the precision
+and security of an FHE program. Thus, not all modulus maps are appropriate
+for a given program.
+Instead, users must specify precision and security constraints that a modulus
+map must meet in order to execute an FHE program correctly. We call these
+\emph{program constraints} (\autoref{fig:overview}).
+
+In this context, an \emph{FHE program} is a circuit of inputs, outputs, and
+homomorphic and level management operations. Each node is label with a level,
+without any information about moduli. \autoref{fig:overview} shows this circuit
+for the program $x \ast x + x$.
+
+With this setup, any modulus chain that meets program constraints can correctly
+run any FHE program that requires those constraints. In other words,
+modulus constraints act as a contract between FHE programs and modulus maps.
+
+Specifically, program constraints are:
+\emph{(1)} the maximum number of levels between bootstraps ($L_{max}$),
+\emph{(2)} the maximum modulus $Q_{max}$ (impacts security),
+\emph{(3)} the minimum modulus $Q_{min}$ (impacts the size of encrypted values
+the program can handle correctly), and
+\emph{(4)} the target scale at each level $L \mapsto T_L$ (impacts precision).
+
+The hardware accelerator further constrains the modulus map by
+requiring that each residue modulus fits into a hardware word
+(\autoref{fig:overview}).
+
+
+Given program and hardware constraints, we can derive many modulus maps $L
+\mapsto Q_L$.
+In fact, RNS-CKKS is an example of a modulus map and we roughly showed how it
+can be constructed from program constraints in \autoref{sec:background}.
+
+\paragraph{Modulus map implies scales:}
+A modulus map implies a mapping between levels and scales $L \mapsto S_L$.
+This is because the scale of a ciphertext at level $L$ is determined by:
+\emph{(1)} the target scale at the highest level $L_{max}$, $T_{L_{max}}$ and
+\emph{(2)} the moduli at each level between $L_{max}$ and $L$.
+
+This dependence is best illustrated by referring back to the example of
+computing $x \ast x + x$ in \autoref{sec:noise}.
+Assume the input $x$ is at $L = 1$, just as in \autoref{fig:overview}.
+Thus, $x$'s modulus and scale are $Q_1$ and $S_1$, respectively.
+The modulus and scale of the output is $Q_0$ and $S_0 = S_1^2/d$, where $d =
+Q_1/Q_0$.
+That is, $S_0$ is the scale of a ciphertext that results from multiplying two
+ciphertexts at level $1$ with scale $S_1$ and then rescaling by $d = Q_1/Q_0$.
+Thus, $S_0 = S_1^2Q_0/Q_1$
+
+In general, the scale at level $L$ will be $S_L = S_{L+1}^2Q_L/Q_{L+1}$ (the
+scale that results from rescaling the product of two ciphertexts at level $L$).
+By applying this relation inductively, we see that all scales can be derived
+from the scale at $L_{max}$ ($T_{L_{max}}$) and the moduli $Q_L$.
+
+\paragraph{Meeting constraints:}
+We say that a level map meets program constraints if:
+\emph{(1)} $T_L/2 < S_L < 2T_L$ for all levels $L$ (i.e., the scales at each
+level are roughly what the user expects),
+\emph{(2)} $Q_0 > Q_{min}$ (i.e., the modulus map can handle the size of values
+expected by the user), and
+\emph{(3)} $Q_{L_{max}} < Q_{max}$ (i.e., the program meets the user's security
+budget).
+
+A modulus map meets the hardware bitwidth constraint if all its residue moduli
+fit into the bitwidth.
+
+\paragraph{\name vs RNS-CKKS:}
+A part of a RNS-CKKS modulus map for $T_L = 2^{40}$ (for all $L$), $L_{max} = 6$,
+and a 64-bit hardware word is shown in \autoref{fig:levelsRnsCkks}. We also
+show the implied scales on the right. As \autoref{sec:background} explains,
+RNS-CKKS chooses residue moduli that roughly match the target scale $T_L =
+2^{40}$.
+This, unfortunately, leaves 24 bits of each hardware word unused (in red).
+
+In contrast, \name uses modulus maps that match the residue modulus size to the
+hardware word (\autoref{fig:levels}). The residues in green are as large as
+possible while fitting within a hardware word, thus eliminating overhead (in red).
+We call these \emph{non-terminal moduli}.
+In contrast, the last residue moduli at each level (in blue) are noticably
+smaller than a hardware word, leading to some overhead. We call these
+\emph{terminal moduli}.
+
+Critically, \name's modulus map in \autoref{fig:levels} \emph{meets the same
+modulus and hardware constraints} as RNS-CKKS's modulus map in
+\autoref{fig:levelsRnsCkks}.
+But by packing data better, \name requires less hardware words to represent
+and operate on the same data.
+Because \name meets the same user and hardware constraints as RNS-CKKS, it can
+run the same programs on the same hardware with the same precision and security
+as RNS-CKKS.
+
+
+\paragraph{Security:}
+Different modulus maps that meet the same program constraints need to have the
+same amount of security. Modulus maps impact security only through the
+largest size of the largest modulus $Q_{L_{max}}$. Program constraints
+dictate that $Q_{L_{max}} < Q_{max}$. Thus, all modulus maps will meet the
+this security threshold.

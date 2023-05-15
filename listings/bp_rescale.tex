@@ -1,0 +1,14 @@
+\begin{figure}
+\begin{lstlisting}[escapechar=!,label=lst:bpRescale,caption={
+  Implementation of \texttt{bpRescale}.
+}]
+def !\color{magenta}{bpRescale}!(ct: Ct) -> Ct:
+  # moduli[L] holds all residue moduli at level L
+  qs_only_in_Ldst = [qi for qi in moduli[L-1]
+                     if qi not in moduli[L]]
+  ct0 = !\color{gray}{scaleUp}!(ct, qs_only_in_Lsrc)
+  qs_only_in_Lsrc = [qi for qi in moduli[L]
+                     if qi not in moduli[L-1]]
+  return !\color{orange}{scaleDown}!(ct0, qs_only_in_Lsrc)
+\end{lstlisting}
+\end{figure}
