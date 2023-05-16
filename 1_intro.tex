@@ -2,18 +2,41 @@
 
 \figUsecase
 
-Fully homomorphic encryption (FHE) is a special type of encryption scheme that
-enables computing on encrypted data directly, without decrypting it. FHE allows
-a client to offload a computation to an untrusted server without revealing any
-data~\cite{chen:ccs17:privset-fhe,DBLP:conf/tcc/GentryH19,gilad:icml16:cryptonets}.
+In an increasingly data-driven world, privacy concerns and the need for secure
+computation have become paramount. Fully Homomorphic Encryption (FHE) presents
+a groundbreaking solution that allows computations to be performed directly on
+encrypted data, without revealing the underlying information. With FHE,
+individuals and organizations can perform complex operations on sensitive data
+while preserving confidentiality, opening up exciting possibilities for secure
+data processing in cloud environments, collaborative analytics, and private
+machine learning.
 
-Unfortunately, FHE is computationally very expensive: up to 100,000x slower
-than the same computation on unencrypted data~\cite{halevi:crypto14:algorithms-helib}.
-Prior work identified that the key computational kernel in FHE is the so-called
-ChangeRnsBase algorithm, accounting for $\sim$90\% of the
-compute\cite{samardzic:isca22:craterlake}.
+However, FHE implementations suffer from a significant computational overhead
+due to the complex mathematical operations required for encryption, decryption,
+and homomorphic evaluation. As a result, practical adoption of FHE remains
+limited, especially when considering the resource-constrained nature of central
+processing units (CPUs) commonly found in everyday computing devices. Efficient
+CPU performance is crucial for achieving acceptable execution times and making
+FHE practical in real-world scenarios.
+
+This paper aims to provide a comprehensive evaluation of CPU performance for
+fully homomorphic encryption schemes. We will investigate various aspects of
+CPU performance, including the impact of encryption parameters, algorithmic
+complexities, and the interplay between FHE and parallel processing.
+Furthermore, we will explore potential optimizations and trade-offs to improve
+the efficiency and scalability of FHE on CPUs, considering factors such as
+circuit depth reduction, SIMD (Single Instruction, Multiple Data)
+vectorization, and hardware accelerators.
+
+By analyzing and comparing the performance characteristics of different FHE
+schemes on CPUs, this research intends to shed light on the practicality of
+using FHE in resource-limited environments. Furthermore, we seek to identify
+key challenges and propose strategies to overcome the computational bottlenecks
+associated with FHE, ultimately facilitating its broader adoption and unlocking
+its full potential in preserving privacy and enabling secure computation.
+
 The goal of this project will be to see how fast ChangeRnsBase can run in
-software on an AMD Ryzen Threadripper PRO 3975WX.
+software.
 
 Existing software libraries implement less-performant FHE schemes that do not
 have the ChangeRnsBase bottleneck.

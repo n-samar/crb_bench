@@ -2,3 +2,14 @@
 
 \tblMain
 \tblMainNew
+
+\autoref{tbl:main} and \autoref{tbl:mainNew} show the performance of RNS base
+change before and after our improvements as a function of polynomial degree
+($N$), the number of input residues ($R_{\textrm{src}}$) and output residues
+($R_{\textrm{dst}}$).
+
+We see that performance is roughly proportional to $N R_{\textrm{src}}
+R_{\textrm{dst}}$ across systems and both for the old and new implementations.
+We also see robust speedups, i.e., 2.3--2.5$\times$, over the old implementation.
+This speedup comes exclusively from the SIMD instructions we use in RNS base
+change, because we made no other improvements.

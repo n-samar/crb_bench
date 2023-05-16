@@ -263,7 +263,7 @@ produces two ciphertext polynomials as output.
 %the output ciphertext, as \autoref{listing:homomorphicMult} shows).
 This variant of boosted keyswitching expands the input polynomial to use 2$\times$ wider coefficients;
 this expansion reduces the KSH sizes and their application.
-In RNS representation, this is accomplished through \verb!changeRNSBase()!,
+In RNS representation, this is accomplished through \verb!rnsBaseChange()!,
 which is used to both \emph{expand} the $L$-residue input into a $2L$-residue intermediate and later to \emph{shrink} the output
 back to $L$ residues.
 %dsm: If you need to say that this is Bajard et al, say it here in a parenthetical, but is this necessary??
@@ -275,17 +275,17 @@ back to $L$ residues.
           \begin{lstlisting}[caption={Boosted keyswitching implementation (1-digit).}, mathescape=true, label=listing:boostedKeyswitching]
 def boostedKeySwitch(p[0:L]):
   pTmp[0:L] = INTT(p[0:L])
-  pTmp[L:2L] = changeRNSBase(pTmp[0:L], [L:2L])
+  pTmp[L:2L] = rnsBaseChange(pTmp[0:L], [L:2L])
   p[L:2L] = NTT(pTmp[L:2L])
   for i = 0, 1:
     prod$\textsubscript{i}$[0:2L] = p[0:2L] * KSH$\textsubscript{i}$[0:2L]
     tmp$\textsubscript{i}$[0:2L] = INTT(prod$\textsubscript{i}$[L:2L], [0:L])
-    mDTmp$\textsubscript{i}$[0:L] = changeRNSBase(tmp$\textsubscript{i}$[L:2L], [0:L])
+    mDTmp$\textsubscript{i}$[0:L] = rnsBaseChange(tmp$\textsubscript{i}$[L:2L], [0:L])
     modDown$\textsubscript{i}$[0:L] = NTT(mDTmp$\textsubscript{i}$[0:L])
     ks$\textsubscript{i}$[0:L] = prod$\textsubscript{i}$[0:L] + modDown$\textsubscript{i}$[0:L]
   return (ks$\textsubscript{0}$[0:L], ks$\textsubscript{1}$[0:L])
 
-def changeRNSBase(x[0:L], destModIdxList):
+def rnsBaseChange(x[0:L], destModIdxList):
   for srcModIdx in [0:L]:
     for destModIdx in destModIdxList:
       C = constant[srcModIdx][destModIdx]
@@ -312,13 +312,13 @@ they are designed to execute all multiplies and adds separately, resulting in an
 overwhelming amount of register file port pressure.
 % FIXME(dsm): This number is meaningless here. Maybe later? But it's in the rebuttal and I don't think this is needed here--if anything, I'd add a more qualitative comparison to TPU/tensor cores later, which I think is more informative.
 %: 15,360 reads and writes per cycle.
-However, the bulk of these \mbox{operations} take place in \verb!changeRNSBase()!
+However, the bulk of these \mbox{operations} take place in \verb!rnsBaseChange()!
 (\autoref{tbl:opBalance}), and are structured as sequence of multiply and accumulate
 operations (\autoref{listing:boostedKeyswitching})~\cite{bajard:2016:full}.
 % nikola: please leave the citation to Bajard in there; otherwise, reviewer can
 % rightfully complain that what we are implementing *does not change the RNS base*.
 % Bajard is a chad and we would be toast without his insight.
-\name exploits this by introducing a novel \verb!changeRNSBase()! functional
+\name exploits this by introducing a novel \verb!rnsBaseChange()! functional
 unit, \emph{CRB}, that buffers the intermediate sums and thereby reduces the
 register file pressure \emph{by a factor of $L$} (i.e., up to 60$\times$).
 
@@ -332,10 +332,10 @@ further reducing register file pressure (\autoref{sec:keyswitchingPipeline}).
 
  
 
-To apply the ChangeRnsBase operation on a polynomial, we simply apply it to
+To apply the \verb!rnsBaseChange! operation on a polynomial, we simply apply it to
 each of its coefficients. This is a convenient source of parallelism.
 
-The simplest algorithm I can think of for doing the ChangeRnsBase on a single
+The simplest algorithm I can think of for doing the \verb!ChangeRnsBase! on a single
 polynomial coefficient is to apply the direct construction proof of the
 existence portion of the Chinese Remainder Theorem\cite{gauss1966english}.
 This approach states that
@@ -362,7 +362,7 @@ sizes, even though asymptotically better solutions are known.
 Critically the moduli (all the $n_i$) are known at compile time. This implies
 that all the “helper” constants (like $N_i$, $M_i$, etc.) can be precomputed.
 
-Mathematically, the ChangeRnsBase asks us to convert the RNS representation
+Mathematically, the \verb!rnsBaseChange! asks us to convert the RNS representation
 $\{a_1 \mod n_1, …, a_k \mod n_k\}$ to another RNS basis $\{b_1 \mod p_1, …, b_k
 \mod p_k\}$, such that both representations represent the same number (the
 Chinese Remainder Theorem guarantees that there is a unique representative mod
@@ -371,15 +371,15 @@ the product of the primes in the basis).
 The approach I will take is to apply the constructive proof (1):
 
 \begin{equation*}
-b_i = sum_{j=1}^k (a_j (M_j mod p_i) (N_j mod p_i)) mod p_i
+b_i = \sum_{j=1}^k (a_j (M_j \mod p_i) (N_j \mod p_i)) \mod p_i
 \end{equation*}
 
 (Note that all the operations here are modulo $p_i$, and thus word-sized and
 cheap).
 
-This turns the ChangeRnsBase problem into a small matrix-vector multiply:
+This turns the \verb!rnsBaseChange! problem into a small matrix-vector multiply:
 assuming that we want to change from a 1,500-bit base to a 1,500-bit base, and
-that the underlying wordsize is 64 bits, ChangeRnsBase for a single coefficient
+that the underlying wordsize is 64 bits, \verb!rnsBaseChange! for a single coefficient
 looks like a $1500/64=24\times 24$ matrix-vector multiply.
 Additionally, the matrix entries are $\{(M_j \mod p_i) (N_j \mod p_i)\}_{i,
 j}$, so they are known at compile time!
@@ -400,5 +400,73 @@ Whether the floating point operations can be mixed in with the integer modular
 operations at no extra cost is an open problem I hope to explore.
 
 
-\subsection{Theoretically-optimal algorithm}
+\subsection{An asymptotically superior approach}
 
+\figAsymptotic
+
+I want to note an algorithm for RNS base change that has better asymptotic
+performance than what we will propose in this work.
+I remember reading about this algorithm in a slightly different context, so
+this is not my original work.
+Unfortunately, I can't find the original work.
+
+\subsection{SIMD vectorization}
+
+SIMD (Single Instruction, Multiple Data) vectorization is a technique used in
+computer programming and hardware design to perform operations on multiple data
+elements simultaneously. It is particularly useful for tasks that involve
+performing the same operation on large amounts of data in parallel, such as
+image processing, numerical simulations, and multimedia applications.
+
+In SIMD vectorization, a processor or hardware unit is equipped with
+specialized instructions and registers that can hold multiple data elements,
+such as floating-point numbers or integers. These registers are called vector
+registers, and they can store a fixed number of data elements, commonly
+referred to as a vector.
+
+The key idea behind SIMD vectorization is to execute a single instruction on
+multiple data elements in parallel. The instruction is designed to operate on
+all the elements of the vector simultaneously, taking advantage of the inherent
+parallelism available in the data.
+
+For example, let's consider adding two vectors of four floating-point numbers
+each. Without SIMD vectorization, you would typically use a loop to iterate
+over each element and perform the addition sequentially. However, with SIMD
+vectorization, you can add the entire vectors in a single operation by
+utilizing the SIMD instructions and vector registers. This significantly
+improves performance as multiple additions are executed simultaneously.
+
+SIMD vectorization can be implemented using various hardware architectures and
+instruction sets. For instance, Intel's SSE (Streaming SIMD Extensions) and AVX
+(Advanced Vector Extensions) instruction sets, as well as ARM's NEON
+technology, are widely used SIMD extensions in modern processors.
+
+To effectively utilize SIMD vectorization, software developers need to write
+code that is aware of the SIMD capabilities of the target hardware. This often
+involves using specific programming techniques and libraries, such as SIMD
+intrinsics or compiler directives, to express the vectorized operations.
+
+\paragraph{AVX2:}
+AVX2 (Advanced Vector Extensions 2) is an extension of Intel's x86 instruction
+set architecture that provides enhanced SIMD vectorization capabilities. It is
+a successor to SSE and AVX, offering even more advanced features for parallel
+processing on compatible processors.
+
+Key features and enhancements provided by AVX2 include:
+\emph{(1)} Increased Vector Width: AVX2 doubles the width of vector registers
+compared to previous generations, allowing the processing of 256 bits of data
+in a single operation. This means AVX2 can operate on 8 single-precision
+floating-point numbers or 4 double-precision floating-point numbers in
+parallel;
+\emph{(2)} Integer Operations: AVX2 introduces a wide range of integer-specific
+instructions that greatly enhance SIMD capabilities for integer-based
+computations. These instructions include packed integer arithmetic, bitwise
+operations, comparisons, and conversions;
+\emph{(3)} Gather and Scatter: AVX2 introduces gather and scatter instructions
+that enable efficient memory access patterns for irregular data structures.
+These instructions allow data elements to be gathered from scattered memory
+locations or scattered back to memory locations based on an index vector.
+\emph{(4)} Fused Multiply-Add (FMA): AVX2 supports FMA instructions, which
+perform a combined multiplication and addition operation in a single
+instruction. FMA instructions are particularly useful for applications
+involving linear algebra, signal processing, and numerical simulations.

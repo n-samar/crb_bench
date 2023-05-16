@@ -1,3 +1,28 @@
 \section{Methodology}
 
 \tblSpecs
+
+We will evaluate the effectiveness of our change using four different systems,
+with detailed system specifications listed in \autoref{tbl:spec}:
+
+\textbf{\texttt{stg1}} is a new server-grade system sporting an AMD Ryzen
+Threadripper PRO 3975WX CPU. This CPU supports AVX2 instructions and fused
+multiply-add (FMA3) instructions.
+
+\textbf{\texttt{stg2}} is a new server-grade system sporting an AMD EPYC 7763 CPU.
+This CPU supports AVX2 instructions and fused multiply-add (FMA3) instructions.
+
+\textbf{\texttt{bcn6}} is an older server-grade system sporting an Intel Xeon
+E5-2697.
+This CPU supports AVX2 instructions and fused multiply-add (FMA3) instructions.
+It runs at a substantially lower frequency compared to \texttt{stg1}.
+
+\textbf{\texttt{mac}} is my MacBook Pro 2019 laptop benchmarked while charging.
+It sports an Intel Core i5-1038NG7 CPU. This CPU supports both AVX2 and AVX512,
+but Rust's compiler does not have stable support for AVX512. Because of this,
+we are only using AVX2 instructions.
+\texttt{mac} also has a fused multiply-add unit (FMA3).
+
+We use Rust's criterion benchmarking library, which automatically sets the
+number of benchmark samples to run in order to ensure statistically significant
+results.

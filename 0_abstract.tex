@@ -1,5 +1,12 @@
-Fully Homomorphic Encryption (FHE) enables computing directly on encrypted
-data.
-We improve the performance of \verb!dumb_ckks!, the state-of-the-art Rust FHE
-library, by gmean 2.41$\times$ by changing the data layout of polynomials, the
-fundamental mathematical type in FHE computation.
+Fully Homomorphic Encryption (FHE) is a revolutionary cryptographic technique
+that allows computations to be performed on encrypted data without the need for
+decryption. FHE holds immense potential for preserving privacy and
+confidentiality in various domains, such as cloud computing, data sharing, and
+machine learning. However, one of the major challenges in practical adoption of
+FHE is its high computational overhead, particularly on central processing
+units (CPUs).
+
+To that end, we improve the performance of \verb!dumb_ckks!, the
+state-of-the-art Rust FHE library, by gmean 2.41$\times$ by changing the data
+layout of FHE polynomials:
+the fundamental type in FHE computation.

@@ -24,20 +24,13 @@
 \begin{table}[t]
     \begin{center}
         \begin{small}
-        \begin{tabular}{lrclr}
+        \begin{tabular}{lrcl}
             \toprule
-                     & \multicolumn{3}{c}{\textbf{Boosted keyswitching}} & \textbf{Standard} \\
-            Ops      & changeRNSBase  & + & other &  \textbf{keyswitching}\\
-            % alex: Changed the numbers to reflect only keyswitching; not
-            %       full homomorphic multiply. This is a homomorphic rotate
-            %       minus one add.
-            % alex: Technically, the L^2 Add terms in both boosted and
-            %       standard should be L(L-1) as it takes L-1 additions to
-            %       sum up L numbers. But, we probably don't care...
+            Ops      & changeRNSBase  & + & other \\
             \midrule
-            Mult     & $3L^2$  & + & $4L$    & $2L^2$ \\
-            Add      & $3L^2$  & + & $2L$    & $2L^2$ \\
-            NTT      &         &   & $6L$    & $L^2$ \\
+            Mult     & $3L^2$  & + & $4L$    \\
+            Add      & $3L^2$  & + & $2L$    \\
+            NTT      &         &   & $6L$    \\
             \midrule
             % alex: I don't think it N=64K is necessary as N doesn't appear
             %       anywhere in the formulas. Alternatively, we should
@@ -45,9 +38,9 @@
             %\multicolumn{3}{l}{At $N$=64K, $L$=64:} \\
             \multicolumn{3}{l}{At $L$=60:} \\
             \midrule
-            Mult     & 10,800 & + & 240         & 7,200 \\
-            Add      & 10,800 & + & 120         & 7,200 \\
-            NTT      &        &   & 360         & 3,600 \\
+            Mult     & 10,800 & + & 240         \\
+            Add      & 10,800 & + & 120         \\
+            NTT      &        &   & 360         \\
             \bottomrule
         \end{tabular}
         \end{small}
@@ -81,6 +74,7 @@
             DRAM                       & \begin{tabular}{@{}r@{}}256\,GiB, 200\,GiB/s\\(8$\times$DDR4-3200)\end{tabular} & \begin{tabular}{@{}r@{}}2\,TiB, 200\,GiB/s/socket\\(8$\times$DDR4-3200)\end{tabular}   & \begin{tabular}{@{}r@{}}128\,GiB, 200\,GiB/s/socket\\(8$\times$DDR4-2133)\end{tabular} & \begin{tabular}{@{}r@{}}16\,GB, 50\,GB/s\\(2$\times$DDR4-3200)\end{tabular}\\
             \bottomrule
         \end{tabular}
+        \label{tbl:spec}
     \end{footnotesize}
         \caption{Specifications of systems used in our evaluation.}
     \end{table*}
@@ -91,7 +85,7 @@
         \centering
         \begin{tabular}{rrr|rrrr}
             \toprule
-            $N$ &$L_{\textrm{src}}$ &$L_{\textrm{dst}}$ & \texttt{stg1} & \texttt{stg2} & \texttt{bcn6} & \texttt{mac} \\
+            $N$ &$R_{\textrm{src}}$ &$R_{\textrm{dst}}$ & \texttt{stg1} & \texttt{stg2} & \texttt{bcn6} & \texttt{mac} \\
             \midrule
             64K & 10                & 10                & 188           & 212           & 630           & 118          \\
             64K & 15                & 15                & 409           & 438           & 1,391         & 230          \\
@@ -100,7 +94,8 @@
             64K & 30                & 30                & 1,581         & 1,574         & 5,404         & 788          \\
             \bottomrule
         \end{tabular}
-        \caption{Execution time of changeRnsBase in milliseconds before our improvements.}
+        \label{tbl:main}
+        \caption{Execution time of \texttt{rnsBaseChange} in milliseconds before our improvements.}
     \end{table}
 }
 
@@ -109,7 +104,7 @@
         \centering
         \begin{tabular}{rrr|rrrr}
             \toprule
-            $N$ &$L_{\textrm{src}}$ &$L_{\textrm{dst}}$ & \texttt{stg1} & \texttt{stg2} & \texttt{bcn6} & \texttt{mac} \\
+            $N$ &$R_{\textrm{src}}$ &$R_{\textrm{dst}}$ & \texttt{stg1} & \texttt{stg2} & \texttt{bcn6} & \texttt{mac} \\
             \midrule
             64K & 10                & 10                & 78            & 89            & 270           & 51           \\
             64K & 15                & 15                & 173           & 182           & 585           & 93           \\
@@ -118,7 +113,8 @@
             64K & 30                & 30                & 651           & 663           & 1,557         & 327          \\
             \bottomrule
         \end{tabular}
-        \caption{Execution time of changeRnsBase in milliseconds after our improvements.}
+        \label{tbl:mainNew}
+    \caption{Execution time of \texttt{rnsBaseChange} in milliseconds after our improvements.}
     \end{table}
 }
 
@@ -126,13 +122,21 @@
     \begin{figure*}[t]
         \begin{center}
             \includegraphics[width=\linewidth]{plots/performance.pdf}
-            \vspace{-0.3in}
             \caption{Execution time in milliseconds on CraterLake of \name
             compared to RNS-CKKS as word size changes.}
             \label{fig:bitwidthsweep}
-            \vspace{-0.24in}
         \end{center}
     \end{figure*}
+}
+
+\newcommand{\figAsymptotic}{
+    \begin{figure}[t]
+        \begin{center}
+            \includegraphics[width=\columnwidth]{figures/ag_asymptotic.pdf}
+            \caption{blah}
+            \label{fig:asymptotic}
+        \end{center}
+    \end{figure}
 }
 
 \newcommand{\figNewLayout}{
