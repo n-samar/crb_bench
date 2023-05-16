@@ -21,14 +21,6 @@ i.e., the structure of ciphertexts and the implementation of homomorphic operati
 There are several FHE schemes, which mainly differ in their plaintext datatypes and the operations they support.
 For example, BGV~\cite{brakerski:toct14:leveled} encodes vectors of integers modulo a constant,
 whereas CKKS~\cite{cheon:ictaci17:homomorphic} encodes vectors of fixed-point numbers.
-Despite the differences between these schemes, % all state-of-the-art FHE schemes
-%use a similar format for ciphertexts, as they rely on the hardness of the same problem
-%(LWE or ring-LWE~\cite{lyubashevsky:tact10:ideal}) to attain security.
-%have similarities since they all rely on the hardness of learning with errors (LWE) or its ring variant (ring-LWE)~\cite{lyubashevsky:tact10:ideal} to attain security.
-the commonalities in their underlying implementation~\cite{lyubashevsky:tact10:ideal}
-make it possible for the same hardware to
-accelerate many schemes
-efficiently---\name supports CKKS, BGV, and GSW~\cite{gentry:crypto13:homomorphic}.
 For concreteness, the rest of this section will focus only on CKKS, as it
 is the scheme best suited for machine learning tasks and has been the focus of
 much recent work in FHE algorithms and applications~\cite{han:iacr18:efficient,lee:2021:privacy,gilad:icml16:cryptonets,podschwadt:2020:classification,dathathri:pldi19:chet,dathathri:pldi20:eva,bossuat:eurocrypt21:efficient}.
@@ -77,7 +69,6 @@ as done by a recent ResNet implementation~\cite{lee:2021:privacy}, comes at a hi
 Instead, recent work has proposed neural network structures that are tailored to
 % dsm: Revised to mention because this used to read like this would match ResNet.
 FHE and achieve lower overheads while maintaining similar accuracy to some unencrypted networks~\cite{brutzkus:icml19:low}.
-We evaluate \name on both styles of neural networks.
 
 Finally, not all data needs to be encrypted:
 additions and especially multiplications are much cheaper in FHE if one of the operands is unencrypted.
@@ -160,8 +151,23 @@ On top of this, homomorphic multiplications and rotations also require a procedu
 which is needed so that the final ciphertext
 stays encrypted by the same secret key as the input.
 Keyswitching is expensive, and in practice \emph{takes over 90\% of all operations}.
-Keyswitching is central to \name, so we discuss it in detail in \autoref{sec:keyswitching}.
+Keyswitching is central to this work, so we discuss it in detail in \autoref{sec:keyswitching}.
 
+\paragraph{Residue Number System (RNS)}
+representation~\cite{garner:1959:residue}
+allows representing each of the wide coefficients of a ciphertext polynomial as $L$ \emph{residue polynomials}
+with narrow coefficients. This is achieved by choosing the wide modulus $Q$ to be a product of $R$ smaller factors, $Q = q_1q_2...q_R$, called \emph{small moduli}.
+% nikola: need to dene this term cuz it is used later in bitwidth section
+Then, $x \bmod Q$ is uniquely represented as $(x \bmod q_1, x \bmod q_2, ..., x \bmod q_R)$.
+
+RNS representation 
+% dsm: REVISION-TRIMMED
+%brings multiple advantages: \emph{(1)} narrower coefficients are easier to operate on,
+%and \emph{(2)} with the algorithms we use, \emph{all FHE operations have lower bit-complexity} than when using wide coefficients.
+reduces overall operation cost, and allows supporting many coefficient widths with a single narrow width in hardware.
+\name exploits this by using 28-bit elements
+(algorithm-related limits prevent using arbitrarily narrow coefficients, as \autoref{sec:bitwidth} explains).
+For example, a ciphertext polynomial with 1,500-bit $Q$ is stored using $L$=54 28-bit residue polynomials.
 
 
 \paragraph{Fast polynomial multiplication via NTTs:}
@@ -194,7 +200,7 @@ This is possible because the NTT is a linear transformation, so additions and au
 \subsection{Keyswitching}\label{sec:keyswitching}
 
 Keyswitching is the dominant computation in FHE, especially for ciphertexts 
-with high multiplicative budgets ($L$).
+with many residues ($R$).
 Thus, we use keyswitching to drive \name's design.
 
 
@@ -206,14 +212,13 @@ requires a large auxiliary operand called a  \emph{keyswitch hint} (KSH);
 the KSH adds pressure on memory bandwidth and on-chip storage.
 
 
-Prior accelerators are optimized for the \emph{standard} keyswitching algorithm,
-which is inefficient for deep computations.
-By contrast, we target the keyswitching algorithm
+\verb!dumb_ckks!, the state-of-the-art Rust FHE library, targets \emph{boosted
+keyswitching}, the keyswitching algorithm
 proposed by Gentry et al.~\cite[Section 3.1]{gentry:crypto2012:homomorphic}.
 In fact, there are multiple variants of this algorithm~\cite[Section 5.3.4]{halevi2020helib},
 that we collectively refer to as \emph{boosted keyswitching}.
-FHE libraries targeting deep computations
-use boosted keyswitching~\cite{gentry:crypto2012:homomorphic,halevi2020helib,heaan,mouchet2020lattigo}.
+FHE libraries targeting deep computations use boosted
+keyswitching~\cite{gentry:crypto2012:homomorphic,halevi2020helib,heaan,mouchet2020lattigo}.
 
 The key innovation in boosted keyswitching is to expand the input polynomial to use wider coefficients.
 This simplifies the KSH and its application.
@@ -229,20 +234,6 @@ then discuss the performance and security tradeoffs of different variants.
 %But as \autoref{sec:drawbacks} mentions, prior accelerators target standard keyswitching.
 %%\footnote{F1 used an inefficient variant of boosted keyswitching, which only becomes beneficial for $L\geq20$. Instead, efficient boosted keyswitching with the proper hardware support outperforms standard keyswitching across all $L$.}
 
-
-In particular, keyswitch hints are the size of
-%four % dsm: ??? please check! (did you mean four ct polys? please use cts)
-% nikola: yes, you are right; two ciphertexts
-two
-ciphertexts.
-% alex: It's a bit confusing that we use 26 MB ct here (L=64) here but 23 MB ct in background (L~=60)
-%       I think both should use the same numbers.
-% nikola: boosted KSH = 4*N*L*28 = 4 * 64*1024 * 60 * 28 = 52.5 MB
-% standard KSH = 2*L^2*N*28 = 2 * 64^2 * 64*1024 * 28 /8/1024/1024 = 1,792 MB = 1.75 GB
-For instance, at $N$=64K and $L$=60,
-a keyswitch hint takes 52.5\,MB
-instead of 1.7\,GB for the standard algorithm.
-%
     \begin{figure}\label{lst:boostedKeyswitching}
       \begin{center}
           \begin{lstlisting}[caption={Boosted keyswitching implementation (1-digit).}, mathescape=true, label=listing:boostedKeyswitching]
@@ -271,39 +262,23 @@ def rnsBaseChange(x[0:L], destModIdxList):
 
 \tblOpBalance
 
-\autoref{tbl:opBalance} compares the operations used by boosted and standard keyswitching.
+\autoref{tbl:opBalance} shows the operations used by boosted.
 Whereas standard keyswitching has $L^2$ NTTs, boosted keyswitching uses only $O(L)$ NTTs:
-a 10$\times$ reduction for $L$=60. To achieve this, boosted keyswitching incurs about 50\%
-more multiplies and adds than standard keyswitching.
-However, trading off fewer NTTs for more multiplies and adds is highly beneficial
- % alex: We talk about vector ops everywhere else, so log N is fairer than N log N
- % dsm: No, this is very confusing because NTTs are NOT vector ops. I've changed it back to NlogN, and clarified that these are scalar ops (it's not OK to say an NTT is logN vector multiplies and adds).
-because NTTs are much more complex, requiring $O(N \log N)$ scalar multiplies and adds.
+a 10$\times$ reduction for $L$=60. 
 
-Previous accelerators cannot perform boosted keyswitching efficiently because
-they are designed to execute all multiplies and adds separately, resulting in an
-overwhelming amount of register file port pressure.
 % FIXME(dsm): This number is meaningless here. Maybe later? But it's in the rebuttal and I don't think this is needed here--if anything, I'd add a more qualitative comparison to TPU/tensor cores later, which I think is more informative.
 %: 15,360 reads and writes per cycle.
-However, the bulk of these \mbox{operations} take place in \verb!rnsBaseChange()!
+The bulk of multiplies and adds in boosted keyswitching take place in \verb!rnsBaseChange()!
 (\autoref{tbl:opBalance}), and are structured as sequence of multiply and accumulate
 operations (\autoref{listing:boostedKeyswitching})~\cite{bajard:2016:full}.
 % nikola: please leave the citation to Bajard in there; otherwise, reviewer can
 % rightfully complain that what we are implementing *does not change the RNS base*.
 % Bajard is a chad and we would be toast without his insight.
-\name exploits this by introducing a novel \verb!rnsBaseChange()! functional
-unit, \emph{CRB}, that buffers the intermediate sums and thereby reduces the
-register file pressure \emph{by a factor of $L$} (i.e., up to 60$\times$).
 
 Additionally, \autoref{listing:boostedKeyswitching} shows that most intermediate
 variables are consumed immediately after being produced and can then be discarded.
 \name exploits this by building \emph{configurable pipelines} of functional units,
 further reducing register file pressure (\autoref{sec:keyswitchingPipeline}).
-
-
-
-
- 
 
 To apply the \verb!rnsBaseChange! operation on a polynomial, we simply apply it to
 each of its coefficients. This is a convenient source of parallelism.

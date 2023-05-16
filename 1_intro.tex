@@ -21,8 +21,8 @@ attackers cannot learn anything about the data, as it remains encrypted
 throughout.
 
 However, FHE implementations suffer from a significant computational overhead
-due to the complex mathematical operations required for encryption, decryption,
-and homomorphic evaluation. As a result, practical adoption of FHE remains
+due to the complex mathematical operations required for
+homomorphic evaluation. As a result, practical adoption of FHE remains
 limited, especially when considering the resource-constrained nature of central
 processing units (CPUs) commonly found in everyday computing devices. Efficient
 CPU performance is crucial for achieving acceptable execution times and making
@@ -30,24 +30,10 @@ FHE practical in real-world scenarios.
 
 \figUsecase
 
-This paper aims to provide a comprehensive evaluation of CPU performance for
-fully homomorphic encryption schemes. We will investigate various aspects of
-CPU performance, including the impact of encryption parameters, algorithmic
-complexities, and the interplay between FHE and parallel processing.
-Furthermore, we will explore potential optimizations and trade-offs to improve
-the efficiency and scalability of FHE on CPUs, considering factors such as
-circuit depth reduction, SIMD (Single Instruction, Multiple Data)
-vectorization, and hardware accelerators.
-
-By analyzing and comparing the performance characteristics of different FHE
-schemes on CPUs, this research intends to shed light on the practicality of
-using FHE in resource-limited environments. Furthermore, we seek to identify
-key challenges and propose strategies to overcome the computational bottlenecks
-associated with FHE, ultimately facilitating its broader adoption and unlocking
-its full potential in preserving privacy and enabling secure computation.
-
-The goal of this project will be to see how fast ChangeRnsBase can run in
-software.
+Prior work identified that the key computational kernel in FHE is the so-called
+\verb!rnsBaseChange! algorithm, accounting for $\sim$90\% of the
+compute~\cite{samardzic:isca22:craterlake}. The goal of this project will be to
+see how fast \verb!rnsBaseChange! can run in software.
 
 Existing software libraries implement less-performant FHE schemes that do not
 have the ChangeRnsBase bottleneck.
