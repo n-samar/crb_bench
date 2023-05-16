@@ -1,6 +1,5 @@
 \section{Introduction}\label{sec:introduction}
 
-\figUsecase
 
 In an increasingly data-driven world, privacy concerns and the need for secure
 computation have become paramount. Fully Homomorphic Encryption (FHE) presents
@@ -11,6 +10,16 @@ while preserving confidentiality, opening up exciting possibilities for secure
 data processing in cloud environments, collaborative analytics, and private
 machine learning.
 
+
+\autoref{fig:usecase} shows how FHE enables secure offloading of computation.
+The client wants to compute an expensive function $f$ (e.g., an animal classification
+algorithm) on some private image of a cat. To do this, the client encrypts the cat image and
+sends it to an untrusted server, which does the classification on this encrypted data
+directly using FHE, and returns the encrypted result to the client.
+FHE provides ideal security properties: even if the server is compromised,
+attackers cannot learn anything about the data, as it remains encrypted
+throughout.
+
 However, FHE implementations suffer from a significant computational overhead
 due to the complex mathematical operations required for encryption, decryption,
 and homomorphic evaluation. As a result, practical adoption of FHE remains
@@ -18,6 +27,8 @@ limited, especially when considering the resource-constrained nature of central
 processing units (CPUs) commonly found in everyday computing devices. Efficient
 CPU performance is crucial for achieving acceptable execution times and making
 FHE practical in real-world scenarios.
+
+\figUsecase
 
 This paper aims to provide a comprehensive evaluation of CPU performance for
 fully homomorphic encryption schemes. We will investigate various aspects of

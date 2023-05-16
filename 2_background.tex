@@ -201,7 +201,7 @@ Thus, we use keyswitching to drive \name's design.
 % FIXME(dsm): What't the point of this? Need table with operation types as a 
 % function of L... and what are w/o CRB numbers???
 
-Keyswitching consists of a large number of operations on residue polynomials and 
+Keyswitching consists of a large number of operations on polynomials and 
 requires a large auxiliary operand called a  \emph{keyswitch hint} (KSH);
 the KSH adds pressure on memory bandwidth and on-chip storage.
 
@@ -230,18 +230,11 @@ then discuss the performance and security tradeoffs of different variants.
 %%\footnote{F1 used an inefficient variant of boosted keyswitching, which only becomes beneficial for $L\geq20$. Instead, efficient boosted keyswitching with the proper hardware support outperforms standard keyswitching across all $L$.}
 
 
-\autoref{fig:ksCompare} compares the memory footprint and compute cost (measured in scalar multiplications)
-of standard and boosted keyswitching as a function of $L$ (the number of residue polynomials,
-proportional to the bitwidth of $Q$).
-Both algorithms have similar costs for small values of $L$, but costs
-grow much more quickly with $L$ for standard keyswitching.
-
 In particular, keyswitch hints are the size of
 %four % dsm: ??? please check! (did you mean four ct polys? please use cts)
 % nikola: yes, you are right; two ciphertexts
 two
-ciphertexts in the boosted algorithm.
-This footprint reduction is the most important factor to \name.
+ciphertexts.
 % alex: It's a bit confusing that we use 26 MB ct here (L=64) here but 23 MB ct in background (L~=60)
 %       I think both should use the same numbers.
 % nikola: boosted KSH = 4*N*L*28 = 4 * 64*1024 * 60 * 28 = 52.5 MB
@@ -249,27 +242,7 @@ This footprint reduction is the most important factor to \name.
 For instance, at $N$=64K and $L$=60,
 a keyswitch hint takes 52.5\,MB
 instead of 1.7\,GB for the standard algorithm.
-This enables holding KSHs on-chip and allows for high reuse.
 %
-\autoref{fig:ksCompare} also shows that boosted keyswitching reduces computational
-costs across the range of multiplicative budget.
-
-\autoref{listing:boostedKeyswitching} shows the implementation of boosted keyswitching.
-Keyswitching takes a ciphertext polynomial and the keyswitching hint (KSH) as inputs,
-and %combines them to 
-produces two ciphertext polynomials as output.
-% dsm: REVISION-TRIMMED
-%(these outputs are used to produce
-%the output ciphertext, as \autoref{listing:homomorphicMult} shows).
-This variant of boosted keyswitching expands the input polynomial to use 2$\times$ wider coefficients;
-this expansion reduces the KSH sizes and their application.
-In RNS representation, this is accomplished through \verb!rnsBaseChange()!,
-which is used to both \emph{expand} the $L$-residue input into a $2L$-residue intermediate and later to \emph{shrink} the output
-back to $L$ residues.
-%dsm: If you need to say that this is Bajard et al, say it here in a parenthetical, but is this necessary??
-
-
-
     \begin{figure}\label{lst:boostedKeyswitching}
       \begin{center}
           \begin{lstlisting}[caption={Boosted keyswitching implementation (1-digit).}, mathescape=true, label=listing:boostedKeyswitching]
@@ -335,13 +308,13 @@ further reducing register file pressure (\autoref{sec:keyswitchingPipeline}).
 To apply the \verb!rnsBaseChange! operation on a polynomial, we simply apply it to
 each of its coefficients. This is a convenient source of parallelism.
 
-The simplest algorithm I can think of for doing the \verb!ChangeRnsBase! on a single
-polynomial coefficient is to apply the direct construction proof of the
+The simplest algorithm I can think of for doing the \verb!rnsBaseChange! on a
+single polynomial coefficient is to apply the direct construction proof of the
 existence portion of the Chinese Remainder Theorem\cite{gauss1966english}.
 This approach states that
 
 \begin{equation*}
-X = \sum_{i=1}^k a_i M_i N_i
+X = \sum_{i=0}^k a_i M_i N_i
 \end{equation*}
 
 is a solution to a system of congruences
@@ -357,7 +330,7 @@ where $N_i = N/n_i$, $N=n_1n_2\cdot...\cdot n_k$, and $M_i$ is the unique intege
 such that $M_iN_i + m_in_i = 1$ (i.e., the \emph{Bezout coefficients}).
 
 This approach will probably give the best performance with practical parameter
-sizes, even though asymptotically better solutions are known.
+sizes, even though asymptotically better solutions are known (\autoref{sec:asymptotic}).
 
 Critically the moduli (all the $n_i$) are known at compile time. This implies
 that all the “helper” constants (like $N_i$, $M_i$, etc.) can be precomputed.
@@ -371,7 +344,7 @@ the product of the primes in the basis).
 The approach I will take is to apply the constructive proof (1):
 
 \begin{equation*}
-b_i = \sum_{j=1}^k (a_j (M_j \mod p_i) (N_j \mod p_i)) \mod p_i
+b_i = \sum_{j=0}^k (a_j (M_j \mod p_i) (N_j \mod p_i)) \mod p_i
 \end{equation*}
 
 (Note that all the operations here are modulo $p_i$, and thus word-sized and
@@ -401,6 +374,7 @@ operations at no extra cost is an open problem I hope to explore.
 
 
 \subsection{An asymptotically superior approach}
+\label{sec:asymptotic}
 
 \figAsymptotic
 
@@ -409,6 +383,33 @@ performance than what we will propose in this work.
 I remember reading about this algorithm in a slightly different context, so
 this is not my original work.
 Unfortunately, I can't find the original work.
+
+The approach for $R_{\textrm{src}} = R_{\textrm{dst}} = 8$ is illustrated in
+\autoref{fig:asymptotic}. The operations labeled $R$ represent RNS reconstruct
+operations. That is, given two residues $r_0 \mod q_0$ and $r_1 \mod q_1$, the
+RNS reconstruct operation computes the unique representative
+$0 \leq x < q_0q_1$ that solve both congruences. This is computed by $x =
+M_0N_0r_0 + M_1N_1r_1 \mod q_0q_1$; the complexity of this thingy is
+$O(M(log(q_0q_1)))$, where $M(n)$ is the bit-complexity of multiplying two
+$n$-bit numbers.
+
+Thus, the complexity of computing the `R'-tree (the bottom half of
+\autoref{fig:asymptotic}) is $O(M(\log_2Q)\log(\log_2Q))$. By induction, we can
+sho that the result of the `R'-tree is the binary representation of the unique
+representative represented by the residues at the leaf of the `R'-tree.
+
+So, to get to the representatives in the destination moduli, we just need to
+mod this binary representation by all the destination moduli. This can be done,
+again, using a tree (the top half of \autoref{fig:asymptotic}; the `\%'
+represent modding). Again, the bit-complexity of this tree is
+$O(M(\log_2Q)\log_2(\log_2Q))$.
+
+So the total complexity of this implementation of \verb!rnsBaseChange! is
+$O(M(\log_2Q)\log_2(\log_2Q))$ which is asymptotically better than our
+implementation, which is $O(\log_2^2Q)$ because by using, say, Karatsuba
+multiplication, we can get $M(n) = n^{3/2}$.
+
+The practical merits of this approach remain unclear.
 
 \subsection{SIMD vectorization}
 

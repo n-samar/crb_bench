@@ -4,8 +4,21 @@
 \figNewLayout
 
 \autoref{fig:oldLayout} and \autoref{fig:newLayout} illustrate the change of
-representation of polynomials that we employed in this work to enable SIMD
-vectorization.
+representation of polynomials that we employed in this work.
+The goal is to enable SIMD vectorization.
+
+Specifically, the old representation represented each coefficient as a vector
+of residues.
+The new representation holds residues corresponding to a specific small modulus
+across all coefficients in a single vector, called a residue polynomial.
+
+In fancy math notation, this is a change from
+
+\begin{equation*}
+b_i = \sum_{j=0}^k (a_j (M_j \mod p_i) (N_j \mod p_i) \mod p_i
+\end{equation*}
+
+into
 
 \begin{align*}
     \begin{bmatrix}
@@ -13,14 +26,31 @@ vectorization.
         b_i^{(1)} \\
         \vdots \\
         b_i^{(7)}
-        \end{bmatrix} &= \sum_{j=1}^k \begin{bmatrix}
+        \end{bmatrix} &= \sum_{j=0}^k \begin{bmatrix}
         a_j^{(0)} \\
         a_j^{(1)} \\
         \vdots \\
         a_j^{(7)}
-        \end{bmatrix}(M_j \mod p_i) (N_j \mod p_i) \mod p_i
+        \end{bmatrix}(M_j \mod p_i) (N_j \mod p_i) \mod p_i.
 \end{align*}
+
+That is, our new representation enables us to compute the same change RNS base
+on multiple polynomial coefficients in parallel using SIMD (e.g., 8 in the
+example).
+
+The nice part is that this change can be made transparently to all other
+modules of the dumb-ckks FHE library: the change is completely contained in
+the internals of the FHE polynomial class.
 
 \subsection{Handling Number-theoretic Transforms}
 
+This change makes SIMDifying NTTs somewhat more challenging. Namely, with the
+old representation, the NTT could have been applied at once to the entire FHE polynomial.
+This allows for SIMD: each multiplication and addition between NTT `twiddles'
+and corresponding elements can be done using SIMD by putting different residues
+into different SIMD slots.
 
+While we have not added SIMD NTT support, we describe how it can be added, even
+with the new layout:
+We do NTTs independently, one residue polynomial at a time. While SIMDifying
+this is less straight-forward, standard techniques are known~\cite{kral2003simd}.

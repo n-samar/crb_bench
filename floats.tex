@@ -26,7 +26,7 @@
         \begin{small}
         \begin{tabular}{lrcl}
             \toprule
-            Ops      & changeRNSBase  & + & other \\
+            Ops      & rnsBaseChange  & + & other \\
             \midrule
             Mult     & $3L^2$  & + & $4L$    \\
             Add      & $3L^2$  & + & $2L$    \\
@@ -45,7 +45,7 @@
         \end{tabular}
         \end{small}
     \end{center}
-        \caption{Operation breakdown for boosted vs.\ standard keyswitching as a function of multiplicative budget ($L$), and for $L$=60. Boosted keyswitching operations are split by whether they happen within or outside \texttt{changeRNSBase()}.}
+\caption{Operation breakdown for boosted vs.\ standard keyswitching as a function of multiplicative budget ($L$), and for $L$=60. Boosted keyswitching operations are split by whether they happen within or outside rnsBaseChange.}
     \label{tbl:opBalance}
 \vspace{-0.15in}
 \end{table}
@@ -74,9 +74,9 @@
             DRAM                       & \begin{tabular}{@{}r@{}}256\,GiB, 200\,GiB/s\\(8$\times$DDR4-3200)\end{tabular} & \begin{tabular}{@{}r@{}}2\,TiB, 200\,GiB/s/socket\\(8$\times$DDR4-3200)\end{tabular}   & \begin{tabular}{@{}r@{}}128\,GiB, 200\,GiB/s/socket\\(8$\times$DDR4-2133)\end{tabular} & \begin{tabular}{@{}r@{}}16\,GB, 50\,GB/s\\(2$\times$DDR4-3200)\end{tabular}\\
             \bottomrule
         \end{tabular}
-        \label{tbl:spec}
     \end{footnotesize}
         \caption{Specifications of systems used in our evaluation.}
+        \label{tbl:spec}
     \end{table*}
 }
 
@@ -94,8 +94,8 @@
             64K & 30                & 30                & 1,581         & 1,574         & 5,404         & 788          \\
             \bottomrule
         \end{tabular}
-        \label{tbl:main}
         \caption{Execution time of \texttt{rnsBaseChange} in milliseconds before our improvements.}
+        \label{tbl:main}
     \end{table}
 }
 
@@ -113,8 +113,8 @@
             64K & 30                & 30                & 651           & 663           & 1,557         & 327          \\
             \bottomrule
         \end{tabular}
-        \label{tbl:mainNew}
     \caption{Execution time of \texttt{rnsBaseChange} in milliseconds after our improvements.}
+    \label{tbl:mainNew}
     \end{table}
 }
 
@@ -133,7 +133,7 @@
     \begin{figure}[t]
         \begin{center}
             \includegraphics[width=\columnwidth]{figures/ag_asymptotic.pdf}
-            \caption{blah}
+            \caption{An illustration of an asymptotically superior approach to our implementation of \texttt{changeRnsBase} on a coefficient with $R_{\textrm{src}}=8$ and $R_{\textrm{dst}}=8$.}
             \label{fig:asymptotic}
         \end{center}
     \end{figure}
@@ -143,7 +143,7 @@
     \begin{figure}[t]
         \begin{center}
             \includegraphics[width=\columnwidth]{figures/ag_new_layout.pdf}
-            \caption{blah}
+            \caption{The FHE polynomial layout in our SIMD-friendly representation.}
             \label{fig:newLayout}
         \end{center}
     \end{figure}
@@ -151,11 +151,10 @@
 
 \newcommand{\figOldLayout}{
     \begin{figure}[t]
-        \begin{center}
+        \centering
             \includegraphics[width=\columnwidth]{figures/ag_old_layout.pdf}
-            \caption{blah}
+            \caption{The FHE polynomial layout in dumb-ckks's original implementation.}
             \label{fig:oldLayout}
-        \end{center}
     \end{figure}
 }
 
@@ -163,7 +162,7 @@
     \begin{figure}[t]
         \begin{center}
             \includegraphics[width=\columnwidth]{figures/ag_usecase.pdf}
-            \caption{blah}
+            \caption{An illustration of using FHE for private machine learning inference.}
             \label{fig:usecase}
         \end{center}
     \end{figure}
@@ -173,7 +172,7 @@
     \begin{figure}[t]
         \begin{center}
             \includegraphics[width=\columnwidth]{figures/ag_breakdown.pdf}
-            \caption{blah}
+            \caption{A rough illustration of a single homomorphic multiplication, with a further breakdown for keyswitching.}
             \label{fig:breakdown}
         \end{center}
     \end{figure}
