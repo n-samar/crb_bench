@@ -1,16 +1,336 @@
 \section{Background and Motivation}\label{sec:background}
 
-FHE is built on top of the Learning With Errors (LWE) cryptographic problem.
-LWE’s ciphertexts are polynomials with coefficients up to 3,000 bits wide
-(integers modulo a large composite number) and degree 10,000--100,000.
-For performance, both software and hardware FHE solutions use the Residue
-Number System (RNS), which leverages the Chinese Remainder
-Theorem~\cite{garner:1959:residue} to allow us to store and operate on FHE’s
-wide coefficients using many small word-sized registers and functional units.
-The ChangeRnsBase changes the modulus field of the polynomials.
-It is necessary for almost every FHE operation and is responsible for >90\%
-compute on most standard FHE
-benchmarks~\cite{feldmann:micro21:f1,samardzic:isca22:craterlake,lattigo-github}.
+\figBreakdown
+
+State-of-the-art % dsm: Unless this is TFHE jab, why? nikola: The point is that in theory there may exist yet-undiscovered FHE schemes that work really well but dont operate on encrypted vectors :P
+FHE schemes implement operations on~\emph{encrypted vectors}.
+The ciphertexts in these schemes support several \emph{homomorphic operations}:
+element-wise addition, element-wise multiplication,
+and rotations of vector elements.
+Each homomorphic operation produces a ciphertext that, when decrypted,
+produces the same result as if the operation had been performed on the unencrypted inputs.
+
+Importantly, homomorphic operations have a different implementation from their unencrypted counterparts---for example,
+a homomorphic multiplication is not implemented using element-wise multiplication
+of the input ciphertexts, but a more complex
+sequence of operations. Therefore, it is useful to differentiate between FHE's \emph{interface},
+i.e., its supported plaintext datatypes and operations,
+and its \emph{implementation},
+i.e., the structure of ciphertexts and the implementation of homomorphic operations.
+
+There are several FHE schemes, which mainly differ in their plaintext datatypes and the operations they support.
+For example, BGV~\cite{brakerski:toct14:leveled} encodes vectors of integers modulo a constant,
+whereas CKKS~\cite{cheon:ictaci17:homomorphic} encodes vectors of fixed-point numbers.
+Despite the differences between these schemes, % all state-of-the-art FHE schemes
+%use a similar format for ciphertexts, as they rely on the hardness of the same problem
+%(LWE or ring-LWE~\cite{lyubashevsky:tact10:ideal}) to attain security.
+%have similarities since they all rely on the hardness of learning with errors (LWE) or its ring variant (ring-LWE)~\cite{lyubashevsky:tact10:ideal} to attain security.
+the commonalities in their underlying implementation~\cite{lyubashevsky:tact10:ideal}
+make it possible for the same hardware to
+accelerate many schemes
+efficiently---\name supports CKKS, BGV, and GSW~\cite{gentry:crypto13:homomorphic}.
+For concreteness, the rest of this section will focus only on CKKS, as it
+is the scheme best suited for machine learning tasks and has been the focus of
+much recent work in FHE algorithms and applications~\cite{han:iacr18:efficient,lee:2021:privacy,gilad:icml16:cryptonets,podschwadt:2020:classification,dathathri:pldi19:chet,dathathri:pldi20:eva,bossuat:eurocrypt21:efficient}.
+
+\subsection{FHE Interface}
+
+%State-of-the-art % dsm: Whatever, once was enough
+FHE schemes implement operations on vectors of values.
+In CKKS, each vector element is a \emph{fixed-point} complex number with a configurable number of bits.
+(Programs that do not use complex arithmetic can zero out the imaginary part.)
+% with a set number of quotient and mantissa bits. % nikola: confusing % dsm: why?
+% nikola: this is confusing because it is the definition of fixed point.
+% so why put it there? As a reminder? That's alright, but I would add "i.e." or
+% something
+% dsm: No, it is important because architects are used to thinking about FIXED FORMATS, like fp32, bfloat16, etc. We must say that the number of bits is configurable.
+
+Since values are encrypted, FHE does not permit data-dependent branching or indirection.
+Thus, all operations and dependencies are known ahead of time, and FHE programs can
+be represented using \emph{static dataflow graphs}.
+
+% nikola: regarding Daniel's note on arbitrarily vs relatively. It _is_ true
+% that we can make computation arbitrarily precise (just add bits of precision!).
+Homomorphic operations in CKKS include element-wise addition, element-wise multiplication,
+and cyclic rotations.
+These operations are \emph{approximate} in CKKS, inducing a small and
+controllable amount of error. However, this error can be made arbitrarily small at the
+cost of reduced performance. % \nnote{this is only true for a priori bounded-depth computation, but i think it's fine to not mention this}
+% dsm: Someone changed arbitrarily to relatively. Unless this error absolutely cannot be reduced beyond a non-zero threshold, please don't fudge it. I don't care that it's expensive and it's not done in practice. Digital logic is also expensive vs analog, and wasn't considered practical for a long time, yet here we are. I'm trying to distance this from the minefield thsat is approximate computing.
+This error is acceptable in practice as machine learning applications
+are insensitive to it.
+
+FHE exposes a vector programming model with a restricted set of operations; in particular,
+FHE does not provide access to individual vector elements.
+This makes it challenging to implement some operations
+that are trivial in plaintext:
+For example,
+implementing a convolutional layer of a neural network requires the careful
+replication of filter weights.
+The lack of non-linear functions introduces other difficulties.
+For example, the ReLU activation function must be approximated
+using a high-degree polynomial~\cite{lee:2021:precise}.
+%
+As a result, faithfully replicating deep neural networks in FHE,
+as done by a recent ResNet implementation~\cite{lee:2021:privacy}, comes at a high compute cost.
+% dsm: used to say However, ..., which is disconnected from the intent of the sentence
+Instead, recent work has proposed neural network structures that are tailored to
+% dsm: Revised to mention because this used to read like this would match ResNet.
+FHE and achieve lower overheads while maintaining similar accuracy to some unencrypted networks~\cite{brutzkus:icml19:low}.
+We evaluate \name on both styles of neural networks.
+
+Finally, not all data needs to be encrypted:
+additions and especially multiplications are much cheaper in FHE if one of the operands is unencrypted.
+This allows algorithms to trade privacy for performance.
+For example, running a neural network using unencrypted weights is faster; it
+still ensures the privacy of inputs and results, but does not
+protect weights~\cite{brutzkus:icml19:low}.
+
+\subsection{FHE Implementation}
+
+% \nnote{some FHE schemes are actually quite different, so i changed the wording here a bit. also, GSW is kind of different from BGV and CKKS}
+We now describe how CKKS represents and operates on encrypted data (i.e., ciphertexts);
+other schemes
+(e.g., BGV)
+have a similar structure.
+
+\paragraph{Encryption:} A ciphertext holds an encrypted vector of plaintext values.
+To create a ciphertext, the vector of plaintext values is first encoded, or \emph{packed},
+in a polynomial; this polynomial is then \emph{encrypted}.
+CKKS packs a plaintext vector of $ n = N/2$ complex fixed-point numbers
+into a degree-$(N-1)$ polynomial:
+% dsm: Sinbce this modulus doesn;t show up anywhere else, and it's unclear how you would pick t to support fixed-point numbers, I'm killing it.
+%with integer coefficients modulo a plaintext
+%modulus $t$:
+\begin{equation*}
+    (c_0, c_1, ..., c_n) \xmapsto{pack} \mathfrak{m} = k_0 + k_1x + ... + k_{N-1}x^{N-1} %\in R_q
+\end{equation*}
+
+% NOTE(dsm): Do not call m a plaintext.
+$\mathfrak{m}$ is then encrypted into a ciphertext. Each ciphertext consists of
+% nikola: better to call these ct_0, ct_1 instead of p_0, p_1 cuz then the homomorphic add example makes more sense (i.e., ct. polys are named after the ciphertext + an index)
+$\mathfrak{ct}_0, \mathfrak{ct}_1$---two \emph{ciphertext polynomials}
+with coefficients modulo a \emph{ciphertext modulus} $Q$.
+Specifically, we encrypt $\mathfrak{m}$
+under a \emph{secret key} $\mathfrak{s}$
+by sampling a uniformly random $\mathfrak{a}$
+and a small \emph{error} $\mathfrak{e}$ ($\mathfrak{s}$, $\mathfrak{a}$, and $\mathfrak{e}$ are also polynomials):
+% nikola: change the above remark to a footnote instead of writing \in R_Q because s and e are *just* polynomials, and a is actually in R_Q. This distinction doesnt matter for ISCA, so I just say they are all polynomials, which is correct. But saying they are all in R_Q would actually be incorrect, so I forgoe it
+\begin{equation*}
+    \mathfrak{m} \xmapsto{encrypt} \mathfrak{ct} = (\mathfrak{ct}_0, \mathfrak{ct}_1) = (\mathfrak{a}, \mathfrak{a}\cdot\mathfrak{s}+\mathfrak{e}+\mathfrak{m})
+\end{equation*}
+% dsm: Comment out if low on space... but we do use partially packed later on.
+The above process produces a \emph{fully-packed} ciphertext, i.e., one
+that encodes as many plaintext values as possible. It is possible
+(though almost always less efficient) to pack~fewer~values,
+producing a partially packed or unpacked (single-element) ciphertext.
+
+% dsm: We need to be careful with how this is described, it seems like this is horribly approximate and the interface is already talking about the error. Positionaing this as approximate computing would be a strategic mistake.
+%The noise term is necessary for the message $m$ to be cryptographically secure.
+%Also, note how the message's low-order bits are corrupted by the error.
+%This often does not interfere with the final computation
+%since computations done with CKKS are convergent and CKKS's
+%encoding mechanism accounts for the error-message interaction,
+%i.e.\ the significant bits are encoded well above the error.
+%The latter is because the noise growth in each FHE computation is predictable.
+
+
+\paragraph{Homomorphic operations} are implemented through several modular-arithmetic operations on ciphertext polynomials, i.e., vectors of coefficients. Specifically:
+\begin{compactitem}
+\item \emph{Homomorphic addition} of two ciphertexts simply requires modular addition of their ciphertext polynomials:
+    $\mathfrak{ct}_{\textrm{add}} = \mathfrak{a} + \mathfrak{b} = (\mathfrak{a}_0+\mathfrak{b}_0, \mathfrak{a}_1+\mathfrak{b}_1)$.
+\item \emph{Homomorphic multiplication} is implemented using polynomial multiplications and additions;
+  multiplying two polynomials requires convolving their coefficients.
+% nikola: there was a convolving elements thing here... this is confusing. I would just say it this way.
+% dsm: Nikola, the whole point is to make it crystal clear thea POLYNOMAIL MULTIPLICATION != MULTIPLICATION. Otherwise the NTT will ome as a complete surprise.
+\item \emph{Homomorphic rotation} rotates the vector encrypted~in~a~ciphertext.
+  Implementing it requires performing an \emph{automorphism} on the ciphertext polynomials,
+  % nikola: there is no benefit to us in explaining what automorphisms are (this is different from F1, where this was critical as it was one of our contributions).
+  % we can just leave it like above (i.e., automorphism is some fairy dust you sprinkle and you get homomorphic rotates).
+  % Actually explainin what an automorphism is causes unnecessary confusion. It's hard enough to remember that homomorphic rotations cyclically rotate the vector.
+  % dsm: I disagree. This paper needs to be self-contained! We ARE using F1's approach to implement automorphisms, but if you don't explain them even superficially, epople will jump to barrel shifters, etc.
+  a structured permutation where, for automorphism $k$, each input index $i$ is mapped to output index $ik \bmod N$.
+  There are $N$ possible automorphisms; each automorphism induces a simpler, cyclic rotation in the plaintext.
+
+\end{compactitem}
+
+\tblComputeBreakdown
+
+On top of this, homomorphic multiplications and rotations also require a procedure called \emph{keyswitching},
+which is needed so that the final ciphertext
+stays encrypted by the same secret key as the input.
+Keyswitching is expensive, and in practice \emph{takes over 90\% of all operations}.
+Keyswitching is central to \name, so we discuss it in detail in \autoref{sec:keyswitching}.
+
+
+
+\paragraph{Fast polynomial multiplication via NTTs:}
+Multiplying two polynomials requires convolving their coefficients, an
+expensive (naively $O(N^2)$) operation.
+Just like convolutions can be made faster with the Fast Fourier Transform,
+polynomial multiplication can be made faster with the Number-Theoretic Transform (NTT)~\cite{moenck1976practical},  % victor asked for a  ``reassuring read-more-about-NTT citation''
+a variant of the discrete Fourier transform for modular arithmetic.
+The NTT takes an $N$\hyp{}coefficient polynomial as input and returns an $N$\hyp{}element vector representing the input in the
+\textit{NTT domain}. Polynomial multiplication can be performed as element-wise multiplication in the NTT domain. Specifically,
+\begin{equation*}
+    NTT(\mathfrak{a}\mathfrak{b}) = NTT(\mathfrak{a}) \odot NTT(\mathfrak{b}),
+\end{equation*}
+where $\odot$ denotes component-wise multiplication. 
+(For this relation to hold with $N$\hyp{}point NTTs, a \emph{negacyclic} NTT~\cite{lyubashevsky:tact10:ideal} must be used (\autoref{sec:fourStepNTT}).)
+
+Because an NTT requires only $O(N \log N)$ modular operations, 
+multiplication can be performed in $O(N \log N)$ operations by using two forward NTTs,
+element-wise multiplication, and an inverse NTT.
+And in fact, optimized FHE implementations often store polynomials in the NTT domain
+rather than in their coefficient form \emph{across operations}, further reducing the number of NTTs.
+This is possible because the NTT is a linear transformation, so additions and automorphisms can also be performed in the NTT domain:
+\vspace{-0.05in} % FIXME(dsm): Terrible break
+\begin{align*}
+    NTT(\sigma_k(\mathfrak{a})) &= \sigma_k(NTT(\mathfrak{a})) \\
+    NTT(\mathfrak{a} + \mathfrak{b}) &= NTT(\mathfrak{a}) + NTT(\mathfrak{b})
+\end{align*}
+\vspace{-0.2in}
+
+\subsection{Keyswitching}\label{sec:keyswitching}
+
+Keyswitching is the dominant computation in FHE, especially for ciphertexts 
+with high multiplicative budgets ($L$).
+Thus, we use keyswitching to drive \name's design.
+
+
+% FIXME(dsm): What't the point of this? Need table with operation types as a 
+% function of L... and what are w/o CRB numbers???
+
+Keyswitching consists of a large number of operations on residue polynomials and 
+requires a large auxiliary operand called a  \emph{keyswitch hint} (KSH);
+the KSH adds pressure on memory bandwidth and on-chip storage.
+
+
+Prior accelerators are optimized for the \emph{standard} keyswitching algorithm,
+which is inefficient for deep computations.
+By contrast, we target the keyswitching algorithm
+proposed by Gentry et al.~\cite[Section 3.1]{gentry:crypto2012:homomorphic}.
+In fact, there are multiple variants of this algorithm~\cite[Section 5.3.4]{halevi2020helib},
+that we collectively refer to as \emph{boosted keyswitching}.
+FHE libraries targeting deep computations
+use boosted keyswitching~\cite{gentry:crypto2012:homomorphic,halevi2020helib,heaan,mouchet2020lattigo}.
+
+The key innovation in boosted keyswitching is to expand the input polynomial to use wider coefficients.
+This simplifies the KSH and its application.
+Boosted keyswitching variants differ in how much they expand the input,
+which introduces a tradeoff between performance and security.
+We first analyze the most efficient variant (which expands the input the most),
+then discuss the performance and security tradeoffs of different variants.
+
+%(In fact, there are multiple variants of this algorithm~\cite[Section 5.3.4]{halevi2020helib};
+%we adopt the variant that minimizes footprint).
+%% nikola: I deleted "and compute operations", cuz it does more compute, but less compute per slot
+%% ...but this argument only holds for CKKS and is subtle... the fact that it minimizes footprint is clear
+%But as \autoref{sec:drawbacks} mentions, prior accelerators target standard keyswitching.
+%%\footnote{F1 used an inefficient variant of boosted keyswitching, which only becomes beneficial for $L\geq20$. Instead, efficient boosted keyswitching with the proper hardware support outperforms standard keyswitching across all $L$.}
+
+
+\autoref{fig:ksCompare} compares the memory footprint and compute cost (measured in scalar multiplications)
+of standard and boosted keyswitching as a function of $L$ (the number of residue polynomials,
+proportional to the bitwidth of $Q$).
+Both algorithms have similar costs for small values of $L$, but costs
+grow much more quickly with $L$ for standard keyswitching.
+
+In particular, keyswitch hints are the size of
+%four % dsm: ??? please check! (did you mean four ct polys? please use cts)
+% nikola: yes, you are right; two ciphertexts
+two
+ciphertexts in the boosted algorithm.
+This footprint reduction is the most important factor to \name.
+% alex: It's a bit confusing that we use 26 MB ct here (L=64) here but 23 MB ct in background (L~=60)
+%       I think both should use the same numbers.
+% nikola: boosted KSH = 4*N*L*28 = 4 * 64*1024 * 60 * 28 = 52.5 MB
+% standard KSH = 2*L^2*N*28 = 2 * 64^2 * 64*1024 * 28 /8/1024/1024 = 1,792 MB = 1.75 GB
+For instance, at $N$=64K and $L$=60,
+a keyswitch hint takes 52.5\,MB
+instead of 1.7\,GB for the standard algorithm.
+This enables holding KSHs on-chip and allows for high reuse.
+%
+\autoref{fig:ksCompare} also shows that boosted keyswitching reduces computational
+costs across the range of multiplicative budget.
+
+\autoref{listing:boostedKeyswitching} shows the implementation of boosted keyswitching.
+Keyswitching takes a ciphertext polynomial and the keyswitching hint (KSH) as inputs,
+and %combines them to 
+produces two ciphertext polynomials as output.
+% dsm: REVISION-TRIMMED
+%(these outputs are used to produce
+%the output ciphertext, as \autoref{listing:homomorphicMult} shows).
+This variant of boosted keyswitching expands the input polynomial to use 2$\times$ wider coefficients;
+this expansion reduces the KSH sizes and their application.
+In RNS representation, this is accomplished through \verb!changeRNSBase()!,
+which is used to both \emph{expand} the $L$-residue input into a $2L$-residue intermediate and later to \emph{shrink} the output
+back to $L$ residues.
+%dsm: If you need to say that this is Bajard et al, say it here in a parenthetical, but is this necessary??
+
+
+
+    \begin{figure}\label{lst:boostedKeyswitching}
+      \begin{center}
+          \begin{lstlisting}[caption={Boosted keyswitching implementation (1-digit).}, mathescape=true, label=listing:boostedKeyswitching]
+def boostedKeySwitch(p[0:L]):
+  pTmp[0:L] = INTT(p[0:L])
+  pTmp[L:2L] = changeRNSBase(pTmp[0:L], [L:2L])
+  p[L:2L] = NTT(pTmp[L:2L])
+  for i = 0, 1:
+    prod$\textsubscript{i}$[0:2L] = p[0:2L] * KSH$\textsubscript{i}$[0:2L]
+    tmp$\textsubscript{i}$[0:2L] = INTT(prod$\textsubscript{i}$[L:2L], [0:L])
+    mDTmp$\textsubscript{i}$[0:L] = changeRNSBase(tmp$\textsubscript{i}$[L:2L], [0:L])
+    modDown$\textsubscript{i}$[0:L] = NTT(mDTmp$\textsubscript{i}$[0:L])
+    ks$\textsubscript{i}$[0:L] = prod$\textsubscript{i}$[0:L] + modDown$\textsubscript{i}$[0:L]
+  return (ks$\textsubscript{0}$[0:L], ks$\textsubscript{1}$[0:L])
+
+def changeRNSBase(x[0:L], destModIdxList):
+  for srcModIdx in [0:L]:
+    for destModIdx in destModIdxList:
+      C = constant[srcModIdx][destModIdx]
+      result[destModIdx] += x[srcModIdx] * C
+  return result
+          \end{lstlisting}
+        \end{center}
+	\vspace{6pt}
+      \end{figure}
+
+\tblOpBalance
+
+\autoref{tbl:opBalance} compares the operations used by boosted and standard keyswitching.
+Whereas standard keyswitching has $L^2$ NTTs, boosted keyswitching uses only $O(L)$ NTTs:
+a 10$\times$ reduction for $L$=60. To achieve this, boosted keyswitching incurs about 50\%
+more multiplies and adds than standard keyswitching.
+However, trading off fewer NTTs for more multiplies and adds is highly beneficial
+ % alex: We talk about vector ops everywhere else, so log N is fairer than N log N
+ % dsm: No, this is very confusing because NTTs are NOT vector ops. I've changed it back to NlogN, and clarified that these are scalar ops (it's not OK to say an NTT is logN vector multiplies and adds).
+because NTTs are much more complex, requiring $O(N \log N)$ scalar multiplies and adds.
+
+Previous accelerators cannot perform boosted keyswitching efficiently because
+they are designed to execute all multiplies and adds separately, resulting in an
+overwhelming amount of register file port pressure.
+% FIXME(dsm): This number is meaningless here. Maybe later? But it's in the rebuttal and I don't think this is needed here--if anything, I'd add a more qualitative comparison to TPU/tensor cores later, which I think is more informative.
+%: 15,360 reads and writes per cycle.
+However, the bulk of these \mbox{operations} take place in \verb!changeRNSBase()!
+(\autoref{tbl:opBalance}), and are structured as sequence of multiply and accumulate
+operations (\autoref{listing:boostedKeyswitching})~\cite{bajard:2016:full}.
+% nikola: please leave the citation to Bajard in there; otherwise, reviewer can
+% rightfully complain that what we are implementing *does not change the RNS base*.
+% Bajard is a chad and we would be toast without his insight.
+\name exploits this by introducing a novel \verb!changeRNSBase()! functional
+unit, \emph{CRB}, that buffers the intermediate sums and thereby reduces the
+register file pressure \emph{by a factor of $L$} (i.e., up to 60$\times$).
+
+Additionally, \autoref{listing:boostedKeyswitching} shows that most intermediate
+variables are consumed immediately after being produced and can then be discarded.
+\name exploits this by building \emph{configurable pipelines} of functional units,
+further reducing register file pressure (\autoref{sec:keyswitchingPipeline}).
+
+
+
+
+ 
 
 To apply the ChangeRnsBase operation on a polynomial, we simply apply it to
 each of its coefficients. This is a convenient source of parallelism.
@@ -78,4 +398,7 @@ floating point has a very large dynamic range, it is ideal for this overflow
 counting~\cite{lattigo-github}.
 Whether the floating point operations can be mixed in with the integer modular
 operations at no extra cost is an open problem I hope to explore.
+
+
+\subsection{Theoretically-optimal algorithm}
 

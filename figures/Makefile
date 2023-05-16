@@ -8,6 +8,10 @@ default: figures-crop.pdf doc_data.txt
 	cp drawing_07.pdf ag_mod_down.pdf
 	cp drawing_08.pdf ag_ckks.pdf
 	cp drawing_09.pdf ag_craterlake.pdf
+	cp drawing_10.pdf ag_breakdown.pdf
+	cp drawing_11.pdf ag_usecase.pdf
+	cp drawing_12.pdf ag_old_layout.pdf
+	cp drawing_13.pdf ag_new_layout.pdf
 
 figures-crop.pdf: figures.pdf Makefile
 	pdfcrop figures.pdf

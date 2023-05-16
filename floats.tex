@@ -20,6 +20,44 @@
     \end{figure}
 }
 
+\newcommand{\tblOpBalance}{
+\begin{table}[t]
+    \begin{center}
+        \begin{small}
+        \begin{tabular}{lrclr}
+            \toprule
+                     & \multicolumn{3}{c}{\textbf{Boosted keyswitching}} & \textbf{Standard} \\
+            Ops      & changeRNSBase  & + & other &  \textbf{keyswitching}\\
+            % alex: Changed the numbers to reflect only keyswitching; not
+            %       full homomorphic multiply. This is a homomorphic rotate
+            %       minus one add.
+            % alex: Technically, the L^2 Add terms in both boosted and
+            %       standard should be L(L-1) as it takes L-1 additions to
+            %       sum up L numbers. But, we probably don't care...
+            \midrule
+            Mult     & $3L^2$  & + & $4L$    & $2L^2$ \\
+            Add      & $3L^2$  & + & $2L$    & $2L^2$ \\
+            NTT      &         &   & $6L$    & $L^2$ \\
+            \midrule
+            % alex: I don't think it N=64K is necessary as N doesn't appear
+            %       anywhere in the formulas. Alternatively, we should
+            %       multiply everything by N.
+            %\multicolumn{3}{l}{At $N$=64K, $L$=64:} \\
+            \multicolumn{3}{l}{At $L$=60:} \\
+            \midrule
+            Mult     & 10,800 & + & 240         & 7,200 \\
+            Add      & 10,800 & + & 120         & 7,200 \\
+            NTT      &        &   & 360         & 3,600 \\
+            \bottomrule
+        \end{tabular}
+        \end{small}
+    \end{center}
+        \caption{Operation breakdown for boosted vs.\ standard keyswitching as a function of multiplicative budget ($L$), and for $L$=60. Boosted keyswitching operations are split by whether they happen within or outside \texttt{changeRNSBase()}.}
+    \label{tbl:opBalance}
+\vspace{-0.15in}
+\end{table}
+}
+
 \newcommand{\tblSpecs}{
     \begin{table*}[t]
         \centering
@@ -62,7 +100,25 @@
             64K & 30                & 30                & 1,581         & 1,574         & 5,404         & 788          \\
             \bottomrule
         \end{tabular}
-        \caption{Execution time of changeRnsBase in milliseconds.}
+        \caption{Execution time of changeRnsBase in milliseconds before our improvements.}
+    \end{table}
+}
+
+\newcommand{\tblMainNew}{
+    \begin{table}[t]
+        \centering
+        \begin{tabular}{rrr|rrrr}
+            \toprule
+            $N$ &$L_{\textrm{src}}$ &$L_{\textrm{dst}}$ & \texttt{stg1} & \texttt{stg2} & \texttt{bcn6} & \texttt{mac} \\
+            \midrule
+            64K & 10                & 10                & 78            & 89            & 270           & 51           \\
+            64K & 15                & 15                & 173           & 182           & 585           & 93           \\
+            64K & 20                & 20                & 719           & 310           & 1,016         & 153          \\
+            64K & 25                & 25                & 299           & 485           & 3,776         & 236          \\
+            64K & 30                & 30                & 651           & 663           & 1,557         & 327          \\
+            \bottomrule
+        \end{tabular}
+        \caption{Execution time of changeRnsBase in milliseconds after our improvements.}
     \end{table}
 }
 
@@ -77,6 +133,46 @@
             \vspace{-0.24in}
         \end{center}
     \end{figure*}
+}
+
+\newcommand{\figNewLayout}{
+    \begin{figure}[t]
+        \begin{center}
+            \includegraphics[width=\columnwidth]{figures/ag_new_layout.pdf}
+            \caption{blah}
+            \label{fig:newLayout}
+        \end{center}
+    \end{figure}
+}
+
+\newcommand{\figOldLayout}{
+    \begin{figure}[t]
+        \begin{center}
+            \includegraphics[width=\columnwidth]{figures/ag_old_layout.pdf}
+            \caption{blah}
+            \label{fig:oldLayout}
+        \end{center}
+    \end{figure}
+}
+
+\newcommand{\figUsecase}{
+    \begin{figure}[t]
+        \begin{center}
+            \includegraphics[width=\columnwidth]{figures/ag_usecase.pdf}
+            \caption{blah}
+            \label{fig:usecase}
+        \end{center}
+    \end{figure}
+}
+
+\newcommand{\figBreakdown}{
+    \begin{figure}[t]
+        \begin{center}
+            \includegraphics[width=\columnwidth]{figures/ag_breakdown.pdf}
+            \caption{blah}
+            \label{fig:breakdown}
+        \end{center}
+    \end{figure}
 }
 
 \newcommand{\figRfSweep}{
@@ -331,3 +427,19 @@ of CKKS that avoids this problem, achieving high utilization (b).}
     \end{figure}
 }
 
+\newcommand{\tblComputeBreakdown}{
+    \begin{table}[t]
+        \centering
+        \begin{tabular}{lrr}
+            \toprule
+                                        & \textbf{\% of keyswitching} & \textbf{\% of total} \\
+            \midrule
+            RNS Base Change             & 81.0\% & 70.0\%  \\
+            NTTs                        & 19.0\% & 16.5\%      \\
+            \midrule
+            \textbf{Total Keyswitching} & & \textbf{86.5\%} \\
+            \bottomrule
+        \end{tabular}
+        \caption{Percent of time spent on keyswitching during a homomorphic multiplication, as well as the breakdown of keyswitching between RNS Base Change and NTTs.}
+    \end{table}
+}
