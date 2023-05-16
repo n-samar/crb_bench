@@ -7,6 +7,20 @@
 representation of polynomials that we employed in this work to enable SIMD
 vectorization.
 
+\begin{align*}
+    \begin{bmatrix}
+        b_i^{(0)} \\
+        b_i^{(1)} \\
+        \vdots \\
+        b_i^{(7)}
+        \end{bmatrix} &= \sum_{j=1}^k \begin{bmatrix}
+        a_j^{(0)} \\
+        a_j^{(1)} \\
+        \vdots \\
+        a_j^{(7)}
+        \end{bmatrix}(M_j \mod p_i) (N_j \mod p_i) \mod p_i
+\end{align*}
+
 \subsection{Handling Number-theoretic Transforms}
 
 
