@@ -19,11 +19,11 @@ and its \emph{implementation},
 i.e., the structure of ciphertexts and the implementation of homomorphic operations.
 
 There are several FHE schemes, which mainly differ in their plaintext datatypes and the operations they support.
-For example, BGV~\cite{brakerski:toct14:leveled} encodes vectors of integers modulo a constant,
-whereas CKKS~\cite{cheon:ictaci17:homomorphic} encodes vectors of fixed-point numbers.
+For example, BGV~\cite{brakerski:toct14:bgv} encodes vectors of integers modulo a constant,
+whereas CKKS~\cite{cheon:asiacrypt17:ckks} encodes vectors of fixed-point numbers.
 For concreteness, the rest of this section will focus only on CKKS, as it
 is the scheme best suited for machine learning tasks and has been the focus of
-much recent work in FHE algorithms and applications~\cite{han:iacr18:efficient,lee:2021:privacy,gilad:icml16:cryptonets,podschwadt:2020:classification,dathathri:pldi19:chet,dathathri:pldi20:eva,bossuat:eurocrypt21:efficient}.
+much recent work in FHE algorithms and applications~\cite{han:iacr18:efficient-logreg,lee2022privacy,gilad:icml16:cryptonets,podschwadt2020classification,dathathri:pldi19:chet,dathathri:pldi20:eva}.
 
 \subsection{FHE Interface}
 
@@ -61,21 +61,21 @@ implementing a convolutional layer of a neural network requires the careful
 replication of filter weights.
 The lack of non-linear functions introduces other difficulties.
 For example, the ReLU activation function must be approximated
-using a high-degree polynomial~\cite{lee:2021:precise}.
+using a high-degree polynomial~\cite{lee:arxiv21:resnet-fhe}.
 %
 As a result, faithfully replicating deep neural networks in FHE,
-as done by a recent ResNet implementation~\cite{lee:2021:privacy}, comes at a high compute cost.
+as done by a recent ResNet implementation~\cite{lee:arxiv21:resnet-fhe}, comes at a high compute cost.
 % dsm: used to say However, ..., which is disconnected from the intent of the sentence
 Instead, recent work has proposed neural network structures that are tailored to
 % dsm: Revised to mention because this used to read like this would match ResNet.
-FHE and achieve lower overheads while maintaining similar accuracy to some unencrypted networks~\cite{brutzkus:icml19:low}.
+FHE and achieve lower overheads while maintaining similar accuracy to some unencrypted networks~\cite{brutzkus:icml19:lola}.
 
 Finally, not all data needs to be encrypted:
 additions and especially multiplications are much cheaper in FHE if one of the operands is unencrypted.
 This allows algorithms to trade privacy for performance.
 For example, running a neural network using unencrypted weights is faster; it
 still ensures the privacy of inputs and results, but does not
-protect weights~\cite{brutzkus:icml19:low}.
+protect weights~\cite{brutzkus:icml19:lola}.
 
 \subsection{FHE Implementation}
 
@@ -150,7 +150,8 @@ producing a partially packed or unpacked (single-element) ciphertext.
 On top of this, homomorphic multiplications and rotations also require a procedure called \emph{keyswitching},
 which is needed so that the final ciphertext
 stays encrypted by the same secret key as the input.
-Keyswitching is expensive, and in practice \emph{takes over 90\% of all operations}.
+Keyswitching is expensive, and in practice \emph{takes over 90\% of all
+operations} (\autoref{fig:breakdown}).
 Keyswitching is central to this work, so we discuss it in detail in \autoref{sec:keyswitching}.
 
 \paragraph{Residue Number System (RNS)}
@@ -165,8 +166,6 @@ RNS representation
 %brings multiple advantages: \emph{(1)} narrower coefficients are easier to operate on,
 %and \emph{(2)} with the algorithms we use, \emph{all FHE operations have lower bit-complexity} than when using wide coefficients.
 reduces overall operation cost, and allows supporting many coefficient widths with a single narrow width in hardware.
-\name exploits this by using 28-bit elements
-(algorithm-related limits prevent using arbitrarily narrow coefficients, as \autoref{sec:bitwidth} explains).
 For example, a ciphertext polynomial with 1,500-bit $Q$ is stored using $L$=54 28-bit residue polynomials.
 
 
@@ -174,7 +173,7 @@ For example, a ciphertext polynomial with 1,500-bit $Q$ is stored using $L$=54 2
 Multiplying two polynomials requires convolving their coefficients, an
 expensive (naively $O(N^2)$) operation.
 Just like convolutions can be made faster with the Fast Fourier Transform,
-polynomial multiplication can be made faster with the Number-Theoretic Transform (NTT)~\cite{moenck1976practical},  % victor asked for a  ``reassuring read-more-about-NTT citation''
+polynomial multiplication can be made faster with the Number-Theoretic Transform (NTT),  % victor asked for a  ``reassuring read-more-about-NTT citation''
 a variant of the discrete Fourier transform for modular arithmetic.
 The NTT takes an $N$\hyp{}coefficient polynomial as input and returns an $N$\hyp{}element vector representing the input in the
 \textit{NTT domain}. Polynomial multiplication can be performed as element-wise multiplication in the NTT domain. Specifically,
@@ -182,7 +181,7 @@ The NTT takes an $N$\hyp{}coefficient polynomial as input and returns an $N$\hyp
     NTT(\mathfrak{a}\mathfrak{b}) = NTT(\mathfrak{a}) \odot NTT(\mathfrak{b}),
 \end{equation*}
 where $\odot$ denotes component-wise multiplication. 
-(For this relation to hold with $N$\hyp{}point NTTs, a \emph{negacyclic} NTT~\cite{lyubashevsky:tact10:ideal} must be used (\autoref{sec:fourStepNTT}).)
+(For this relation to hold with $N$\hyp{}point NTTs, a \emph{negacyclic} NTT~\cite{lyubashevsky2013ideal} must be used.)
 
 Because an NTT requires only $O(N \log N)$ modular operations, 
 multiplication can be performed in $O(N \log N)$ operations by using two forward NTTs,
@@ -201,8 +200,6 @@ This is possible because the NTT is a linear transformation, so additions and au
 
 Keyswitching is the dominant computation in FHE, especially for ciphertexts 
 with many residues ($R$).
-Thus, we use keyswitching to drive \name's design.
-
 
 % FIXME(dsm): What't the point of this? Need table with operation types as a 
 % function of L... and what are w/o CRB numbers???
@@ -217,8 +214,6 @@ keyswitching}, the keyswitching algorithm
 proposed by Gentry et al.~\cite[Section 3.1]{gentry:crypto2012:homomorphic}.
 In fact, there are multiple variants of this algorithm~\cite[Section 5.3.4]{halevi2020helib},
 that we collectively refer to as \emph{boosted keyswitching}.
-FHE libraries targeting deep computations use boosted
-keyswitching~\cite{gentry:crypto2012:homomorphic,halevi2020helib,heaan,mouchet2020lattigo}.
 
 The key innovation in boosted keyswitching is to expand the input polynomial to use wider coefficients.
 This simplifies the KSH and its application.
@@ -262,23 +257,18 @@ def rnsBaseChange(x[0:L], destModIdxList):
 
 \tblOpBalance
 
-\autoref{tbl:opBalance} shows the operations used by boosted.
-Whereas standard keyswitching has $L^2$ NTTs, boosted keyswitching uses only $O(L)$ NTTs:
-a 10$\times$ reduction for $L$=60. 
+\autoref{tbl:opBalance} shows the operations used by boosted keyswitching: it
+uses only $O(R)$ NTTs, making \verb!rnsBaseChange! the computational
+bottleneck.
 
 % FIXME(dsm): This number is meaningless here. Maybe later? But it's in the rebuttal and I don't think this is needed here--if anything, I'd add a more qualitative comparison to TPU/tensor cores later, which I think is more informative.
 %: 15,360 reads and writes per cycle.
 The bulk of multiplies and adds in boosted keyswitching take place in \verb!rnsBaseChange()!
 (\autoref{tbl:opBalance}), and are structured as sequence of multiply and accumulate
-operations (\autoref{listing:boostedKeyswitching})~\cite{bajard:2016:full}.
+operations (\autoref{listing:boostedKeyswitching}, \autoref{fig:breakdown})~\cite{bajard2017full}.
 % nikola: please leave the citation to Bajard in there; otherwise, reviewer can
 % rightfully complain that what we are implementing *does not change the RNS base*.
 % Bajard is a chad and we would be toast without his insight.
-
-Additionally, \autoref{listing:boostedKeyswitching} shows that most intermediate
-variables are consumed immediately after being produced and can then be discarded.
-\name exploits this by building \emph{configurable pipelines} of functional units,
-further reducing register file pressure (\autoref{sec:keyswitchingPipeline}).
 
 To apply the \verb!rnsBaseChange! operation on a polynomial, we simply apply it to
 each of its coefficients. This is a convenient source of parallelism.
