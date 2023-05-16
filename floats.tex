@@ -44,8 +44,26 @@
             \bottomrule
         \end{tabular}
     \end{footnotesize}
-        \caption{Caption}
+        \caption{Specifications of systems used in our evaluation.}
     \end{table*}
+}
+
+\newcommand{\tblMain}{
+    \begin{table}[t]
+        \centering
+        \begin{tabular}{rrr|rrrr}
+            \toprule
+            $N$ &$L_{\textrm{src}}$ &$L_{\textrm{dst}}$ & \texttt{stg1} & \texttt{stg2} & \texttt{bcn6} & \texttt{mac} \\
+            \midrule
+            64K & 10                & 10                & 188           & 212           & 630           & 118          \\
+            64K & 15                & 15                & 409           & 438           & 1,391         & 230          \\
+            64K & 20                & 20                & 719           & 747           & 2,448         & 378          \\
+            64K & 25                & 25                & 1,106         & 1,179         & 3,776         & 570          \\
+            64K & 30                & 30                & 1,581         & 1,574         & 5,404         & 788          \\
+            \bottomrule
+        \end{tabular}
+        \caption{Execution time of changeRnsBase in milliseconds.}
+    \end{table}
 }
 
 \newcommand{\figBitwidthSweep}{
@@ -227,10 +245,6 @@ of CKKS that avoids this problem, achieving high utilization (b).}
         \label{fig:bpModDown}
     \end{center}
 \end{figure}
-}
-
-\newcommand{\tblMain}{
-    \input{tables/ag_tbl_main.tex}
 }
 
 \newcommand{\tblNomenclature}{

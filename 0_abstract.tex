@@ -1,23 +1,5 @@
-\vspace{-0.15in} % dsm: Fix weird spacing issue
-
 Fully Homomorphic Encryption (FHE) enables computing directly on encrypted
 data.
-Though FHE is slow on a CPU, recent hardware accelerators compensate most of
-FHE's overheads, enabling real-time performance in complex programs like deep
-neural networks.
-However, the state-of-the-art FHE scheme, CKKS, is inefficient on accelerators.
-CKKS represents encrypted data using
-integers of widely different sizes (typically 30 to 60 bits).
-This leaves many bits unused in registers and arithmetic datapaths.
-This overhead is minor in CPUs, but accelerators are dominated by
-multiplications, so poor utilization causes large area and energy
-overheads.
-
-We present \name, a new implementation of CKKS that keeps encrypted data packed
-in fixed-size words, enabling near-full arithmetic efficiency in
-accelerators.
-\name is the first redesign of an FHE scheme that targets accelerators.
-On a state-of-the-art accelerator,
-\name improves performance by gmean \OK{53\%} and by up to \OK{3\x},
-and reduces energy by gmean \OK{66\%}.
-\name does not reduce precision and can be applied to all prior accelerators without hardware changes.
+We improve the performance of \verb!dumb_ckks!, the state-of-the-art Rust FHE
+library, by gmean 2.41$\times$ by changing the data layout of polynomials, the
+fundamental mathematical type in FHE computation.
