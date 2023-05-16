@@ -26,3 +26,9 @@ we are only using AVX2 instructions.
 We use Rust's criterion benchmarking library, which automatically sets the
 number of benchmark samples to run in order to ensure statistically significant
 results.
+
+As mentioned, we improve the performance of \verb!dumb_ckks!, the
+state-of-the-art Rust FHE library, which focuses on the CKKS encryption
+scheme~\cite{cheon:asiacrypt17:ckks}.
+This library is used by my lab to evaluate the performance of FHE on CPUs for
+paper submissions.
